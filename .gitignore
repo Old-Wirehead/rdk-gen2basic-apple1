@@ -1,0 +1,26 @@
+# Assembler / linker outputs
+build/
+out/
+*.o
+*.obj
+*.bin
+*.prg
+*.hex
+*.lst
+*.map
+*.lbl
+*.sym
+*.dbg
+# Generated tapes
+*.wav
+*.aiff
+# ROM images: never commit (copyright)
+*.rom
+roms/
+# Editor / OS
+.DS_Store
+*~
+*.swp
+.vscode/
+.idea/
+__pycache__/
