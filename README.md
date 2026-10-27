@@ -1,4 +1,4 @@
-# RDK BASIC
+# RDK G2 Basic Apple 1
 
 A clean-room, Integer BASIC-compatible interpreter for the Apple 1, written from scratch in 6502 assembly.
 
