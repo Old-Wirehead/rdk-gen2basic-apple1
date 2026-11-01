@@ -1,0 +1,11 @@
+\
+E000R
+
+E000: 4C
+>10 K=KEY(0): GOTO 10
+>RUN
+STOPPED AT 10
+>PRINT 5
+5
+
+>

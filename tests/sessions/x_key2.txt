@@ -1,0 +1,4 @@
+10 K=KEY(0): GOTO 10
+!RUN
+#KEY:
+PRINT 5

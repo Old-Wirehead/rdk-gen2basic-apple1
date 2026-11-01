@@ -4,6 +4,7 @@
 #   tests/run-tests.sh            compare the clone with the golden transcripts
 #   tests/run-tests.sh --real     also compare with the ORIGINAL Integer BASIC
 #                                 (needs ORIG_ROM=/path/to/integer_basic.bin, never committed)
+#                                 (sessions named x_*.txt use G2 Basic extensions: not compared)
 #   tests/run-tests.sh --update   rewrite the golden transcripts (after a deliberate change)
 #
 # Needs the "bastest" example of rdk-apple1 (crates/apple1-core/examples/bastest.rs):
@@ -28,7 +29,7 @@ for s in "$here"/sessions/*.txt; do
   out=$(run "$bin" "$s")
   if [ "$mode" = --update ]; then printf '%s\n' "$out" > "$exp"; continue; fi
   if [ "$out" = "$(cat "$exp")" ]; then echo "ok    $b"; else echo "FAIL  $b"; fail=$((fail+1)); fi
-  if [ "$mode" = --real ] && [ "$b" != gen2hook ]; then
+  if [ "$mode" = --real ] && [ "$b" != gen2hook ] && [ "${b#x_}" = "$b" ]; then
     unset BASIC_PRE
     real=$(run "${ORIG_ROM:?set ORIG_ROM}" "$s")
     [ "$real" = "$out" ] && echo "      same as the original BASIC" || { echo "      DIFFERS from the original BASIC"; fail=$((fail+1)); }

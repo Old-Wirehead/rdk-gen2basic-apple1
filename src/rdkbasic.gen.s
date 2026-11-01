@@ -50,6 +50,9 @@ CNT     = $2A                   ; byte count (2)
 S1      = $2C                   ; copy source (2)
 S2      = $2E                   ; copy destination (2)
 T3      = $30
+LS1     = $40                   ; LIST / DEL: first line number (2); DIGITS and LISTLN use W1, W2
+LS2     = $42                   ; LIST / DEL: last line number (2)
+KEYF    = $4E                   ; 1 once the program has used KEY
 ; pointers shared with the tape format (cassette blocks $4A-$FF)
 LOMEM   = $4A
 HIMEM   = $4C
@@ -128,23 +131,6 @@ M_STOP: .byte "STOPPED AT", $A0
 M_BAN:  .byte "RDK G2 BASIC 1.0", CR
         .byte "DEDICATED TO UNCLE BERNIE", CR+$80
 
-; immediate commands: text, index
-IMMTAB: .byte "LIS", $D4
-        .byte 0
-        .byte "RU", $CE
-        .byte 1
-        .byte "CL", $D2
-        .byte 2
-        .byte "SC", $D2
-        .byte 3
-        .byte "DE", $CC
-        .byte 4
-        .byte "AUT", $CF
-        .byte 5
-        .byte "MA", $CE
-        .byte 6
-        .byte 0
-
 ; statements: text, class (<$40 = special handler*2, $40-$7F = token alone, $C0+ = token + expression)
 STMTAB: .byte "RE", $CD
         .byte 0
@@ -219,6 +205,8 @@ FNTAB:  .byte "PEE", $CB
         .byte $30
         .byte "AB", $D3
         .byte $31
+        .byte "KE", $D9
+        .byte $32
         .byte 0
 
 ; words that may follow a name directly
@@ -296,6 +284,8 @@ TOKTXT: .byte $03
         .byte " SGN", $A0
         .byte $31
         .byte " ABS", $A0
+        .byte $32
+        .byte " KEY", $A0
         .byte $34
         .byte $A8
         .byte $35
@@ -393,9 +383,33 @@ TOKTXT: .byte $03
 ; ------------------------------------------------------------ start up
 ; GEN2 driver signature at $0800-$0807.  TODO(Bernie): the real bytes, and the
 ; A/X/Y parameters of the call at $0C00, are still to be specified.
+GSIG:   .byte "GEN2CARD"
+M_RET:  .byte "RETYPE LIN", $C5
         .res $E2B3-*, 0         ; warm start entry (E2B3R), as the Apple-1 BASIC
         jmp WARM
-GSIG:   .byte "GEN2CARD"
+
+; immediate commands: text, index
+IMMTAB: .byte "LIS", $D4
+        .byte 0
+        .byte "RU", $CE
+        .byte 1
+        .byte "CL", $D2
+        .byte 2
+        .byte "SC", $D2
+        .byte 3
+        .byte "DE", $CC
+        .byte 4
+        .byte "AUT", $CF
+        .byte 5
+        .byte "MA", $CE
+        .byte 6
+        .byte "LOME", $CD
+        .byte 7
+        .byte "HIME", $CD
+        .byte 8
+        .byte 0
+
+
 
 COLD:   cld
         ldx #$FF
@@ -579,6 +593,8 @@ GETCH:  lda KB
 ; the key stays pending and becomes the first character of the next line
 CHKKEY: lda KBDCR
         bpl @r
+        lda KEYF
+        bne @r
         jmp STOPKEY
 @r:     rts
 
@@ -639,6 +655,11 @@ GOSTK   = $A0                   ; 8 GOSUB frames of 4 bytes ($A0-$BF)
 SYNERR: lda #E_SYN
         jmp ERROR
 SYNERRJ: jmp SYNERR
+
+INCIP:  inc IP
+        bne @r
+        inc IP+1
+@r:     rts
 
 ; PK: skip spaces, A = next character of IBUF (not consumed)
 PK:     ldx SI
@@ -760,8 +781,7 @@ DIGITS: lda #0
         inc ACC+1
 @n:     lda ACC+1
         bpl @l
-@big:   lda #E_BIG
-        jmp ERROR
+@big:   jmp ERBIG
 @r:     rts
 
 ; TNUM: constant at SI -> $B0+first digit, lo, hi
@@ -780,11 +800,9 @@ TNUM:   jsr PK
 ; TNAME: name (letter, digit or $); C=1 for a string
 TNAME:  jsr PK
         cmp #'A'
-        bcs *+5      ; far branch: bcc SYNERR
-        jmp SYNERR
+        bcc @isl1      ; via island: SYNERR
         cmp #'Z'+1
-        bcc *+5      ; far branch: bcs SYNERR
-        jmp SYNERR
+        bcs @isl1      ; via island: SYNERR
         inc SI
         ora #$80
         jsr EM
@@ -798,16 +816,15 @@ TNAME:  jsr PK
         jsr EM
         jsr PK
         cmp #'$'
-        bne *+5      ; far branch: beq SYNERR
-        jmp SYNERR
+        beq @isl1      ; via island: SYNERR
         cmp #'0'
         bcc @e
         cmp #'9'+1
-        bcs *+5      ; far branch: bcc SYNERR
-        jmp SYNERR
+        bcc @isl1      ; via island: SYNERR
 @e:     jsr NAMEEND
         clc
         rts
+@isl1: jmp SYNERR      ; branch island
 @nd:    cmp #'$'
         bne @e
         inc SI
@@ -834,22 +851,22 @@ NAMEEND: jsr PK
 
 TLIT:   jsr PK
         cmp #'"'
-        beq *+5      ; far branch: bne SYNERR
-        jmp SYNERR
+        bne @isl2      ; via island: SYNERR
         inc SI
         lda #$28
         jsr EM
 @c:     ldx SI
         lda IBUF,x
         cmp #CR
-        bne *+5      ; far branch: beq SYNERRJ
-        jmp SYNERRJ
+        beq @isl3      ; via island: SYNERRJ
         inc SI
         cmp #'"'
         beq @e
         ora #$80
         jsr EM
         jmp @c
+@isl2: jmp SYNERR      ; branch island
+@isl3: jmp SYNERRJ      ; branch island
 @e:     lda #$29
         jmp EM
 
@@ -874,9 +891,9 @@ TSEXPR: jsr PK
         cmp #'"'
         beq TLIT
         jsr TNAME
-        bcs *+5      ; far branch: bcc SYNERR
-        jmp SYNERR
+        bcc @isl4      ; via island: SYNERR
         jmp TSTAIL
+@isl4: jmp SYNERR      ; branch island
 
 TSUBS:  jsr PK
         cmp #'('
@@ -1295,16 +1312,15 @@ TOKSTMTS:
         cmp #CR
         beq @e
         cmp #':'
-        beq *+5      ; far branch: bne SYNERRJ
-        jmp SYNERRJ
+        bne @isl5      ; via island: SYNERRJ
         inc SI
         jsr PK
         cmp #CR                 ; nothing after the colon: syntax error
-        bne *+5      ; far branch: beq SYNERRJ
-        jmp SYNERRJ
+        beq @isl5      ; via island: SYNERRJ
         lda #$03
         jsr EM
         jmp @l
+@isl5: jmp SYNERRJ      ; branch island
 @e:     lda #$01
         jsr EM
         lda OI
@@ -1364,10 +1380,10 @@ PROCESS: lda #0
         lda AUTOL+1
         sta LN+1
         jmp @lineno
+@isl6: jmp COMMAND      ; branch island
 @cmd:   setptr IMMTAB
         jsr MTAB
-        bcc *+5      ; far branch: bcs COMMAND
-        jmp COMMAND
+        bcs @isl6      ; via island: COMMAND
         lda #0
         sta LN
         sta LN+1
@@ -1524,8 +1540,7 @@ INSLN:  jsr FINDLN              ; PTR = insertion point
         lda S2+1
         sbc PV+1
         bcs @ok
-@mem:   lda #E_MEM
-        jmp ERROR
+@mem:   jmp ERMEM
 @ok:    lda S2
         pha
         lda S2+1
@@ -1570,6 +1585,7 @@ CLR:    lda LOMEM
         lda LOMEM+1
         sta PV+1
         lda #0
+        sta KEYF
         sta FORSP
         sta GOSP
         rts
@@ -1582,7 +1598,7 @@ COMMAND: asl a
         lda CTAB+1,x
         sta PTR+1
         jmp (PTR)
-CTAB:   .word C_LIST, C_RUN, C_CLR, C_NEW, C_DEL, C_AUTO, C_MAN
+CTAB:   .word C_LIST, C_RUN, C_CLR, C_NEW, C_DEL, C_AUTO, C_MAN, C_LOMEM, C_HIMEM
 
 ; ARGNUM: C=1 and ACC = number when a number follows
 ARGNUM: jsr PK
@@ -1597,12 +1613,141 @@ ARGNUM: jsr PK
         rts
 ENDARG: jsr PK
         cmp #CR
-        beq *+5      ; far branch: bne SYNERRJ
-        jmp SYNERRJ
+        bne @isl7      ; via island: SYNERRJ
         rts
+@isl7: jmp SYNERRJ      ; branch island
+
+; RANGE: LIST / DEL arguments [a[,b]] -> LS1, LS2 (default 0 to 32767), C=1 when a was given
+RANGE:  lda #0
+        sta LS1
+        sta LS1+1
+        lda #$FF
+        sta LS2
+        lda #$7F
+        sta LS2+1
+        jsr ARGNUM
+        bcc @e
+        lda ACC
+        sta LS1
+        sta LS2
+        lda ACC+1
+        sta LS1+1
+        sta LS2+1
+        jsr PK
+        cmp #','
+        bne @d
+        inc SI
+        jsr ARGNUM
+        bcc @isl8      ; via island: SYNERRJ
+        lda ACC
+        sta LS2
+        lda ACC+1
+        sta LS2+1
+@d:     sec
+@e:     php
+        jsr ENDARG
+        plp
+        rts
+@isl8: jmp SYNERRJ      ; branch island
+
+; LOMEM= / HIMEM= expression (immediate mode): ACC = value
+MEMARG: jsr PK
+        cmp #'='
+        bne @isl9      ; via island: SYNERRJ
+        inc SI
+        jsr TEXPR
+        jsr PK
+        cmp #CR
+        bne @isl9      ; via island: SYNERRJ
+        lda #1
+        jsr EM
+        lda #<(OBUF+3)
+        sta IP
+        lda #>(OBUF+3)
+        sta IP+1
+        jmp EVAL
+@isl9: jmp SYNERRJ      ; branch island
+; LOMEM=n: start of the variables (they are cleared); RANGE ERR from the program on
+C_LOMEM: jsr MEMARG
+        lda ACC
+        cmp PP
+        lda ACC+1
+        sbc PP+1
+        bcs @isl10      ; via island: ERRNG
+        lda ACC
+        sta LOMEM
+        lda ACC+1
+        sta LOMEM+1
+        jmp CLRD
+@isl10: jmp ERRNG      ; branch island
+; HIMEM=n: top of the program memory; the program block moves with it (MEM FULL if it no longer fits)
+C_HIMEM: jsr MEMARG
+        lda ACC+1
+        bmi @isl11      ; via island: ERRNG
+        sec
+        lda ACC
+        sbc HIMEM
+        sta W1                  ; W1 = shift
+        lda ACC+1
+        sbc HIMEM+1
+        sta W1+1
+        clc
+        lda PP
+        adc W1
+        sta S2
+        lda PP+1
+        adc W1+1
+        sta S2+1
+        bmi @mem                ; below zero (or above 32767)
+        lda S2
+        cmp PV
+        lda S2+1
+        sbc PV+1
+        bcs @ok
+@mem:   jmp ERMEM
+@isl11: jmp ERRNG      ; branch island
+@ok:    lda S2+1
+        pha
+        lda S2
+        pha                     ; new PP
+        sec
+        lda HIMEM
+        sbc PP
+        sta CNT
+        lda HIMEM+1
+        sbc PP+1
+        sta CNT+1
+        lda W1+1
+        bmi @dn
+        lda HIMEM
+        sta S1
+        lda HIMEM+1
+        sta S1+1
+        dec16 S1
+        lda ACC
+        sta S2
+        lda ACC+1
+        sta S2+1
+        dec16 S2
+        jsr MOVUP
+        jmp @fin
+@dn:    lda PP
+        sta S1
+        lda PP+1
+        sta S1+1
+        jsr MOVDN               ; S2 = new PP
+@fin:   pla
+        sta PP
+        pla
+        sta PP+1
+        lda ACC
+        sta HIMEM
+        lda ACC+1
+        sta HIMEM+1
+        jmp DONE
 
 C_CLR:  jsr ENDARG
-        jsr CLR
+CLRD:   jsr CLR
         jmp DONE
 C_NEW:  jsr ENDARG
         lda HIMEM
@@ -1631,40 +1776,19 @@ C_AUTO: lda #10
         bne @e
         inc SI
         jsr ARGNUM
-        bcs *+5      ; far branch: bcc SYNERRJ
-        jmp SYNERRJ
+        bcc @isl12      ; via island: SYNERRJ
         lda ACC
         sta ASTEP
 @e:     jsr ENDARG
         lda #1
         sta AUTON
         jmp DONE
-C_DEL:  jsr ARGNUM
-        bcs *+5      ; far branch: bcc SYNERRJ
-        jmp SYNERRJ
-        lda ACC
-        sta W1
-        lda ACC+1
-        sta W1+1
-        lda ACC
-        sta W2
-        lda ACC+1
-        sta W2+1
-        jsr PK
-        cmp #','
-        bne @e
-        inc SI
-        jsr ARGNUM
-        bcs *+5      ; far branch: bcc SYNERRJ
-        jmp SYNERRJ
-        lda ACC
-        sta W2
-        lda ACC+1
-        sta W2+1
-@e:     jsr ENDARG
-@l:     lda W1
+@isl12: jmp SYNERRJ      ; branch island
+C_DEL:  jsr RANGE
+        bcc @isl13      ; via island: SYNERRJ
+@l:     lda LS1
         sta LN
-        lda W1+1
+        lda LS1+1
         sta LN+1
         jsr FINDLN
         lda PTR                 ; end of the program ?
@@ -1672,23 +1796,32 @@ C_DEL:  jsr ARGNUM
         lda PTR+1
         sbc HIMEM+1
         bcs @d
-        ldy #2                  ; line number > W2 ?
-        lda W2+1
+        ldy #2                  ; line number > LS2 ?
+        lda LS2+1
         cmp (PTR),y
-        bcc @d
+        bcc @gt
         bne @go
         dey
-        lda W2
+        lda LS2
         cmp (PTR),y
-        bcc @d
+        bcs @go
+@gt:    ldy #2                  ; past the end: only the first requested line itself still counts
+        lda (PTR),y
+        cmp LS1+1
+        bne @d
+        dey
+        lda (PTR),y
+        cmp LS1
+        bne @d
 @go:    ldy #1
         lda (PTR),y
-        sta W1
+        sta LS1
         iny
         lda (PTR),y
-        sta W1+1
+        sta LS1+1
         jsr DELLN
         jmp @l
+@isl13: jmp SYNERRJ      ; branch island
 @d:     jmp DONE
 
 C_RUN:  jsr ARGNUM
@@ -1733,33 +1866,7 @@ SETLINE: lda PTR
         jmp EXEC
 
 ; ------------------------------------------------------------ LIST
-C_LIST: lda #0
-        sta W1
-        sta W1+1
-        lda #$FF
-        sta W2
-        lda #$7F
-        sta W2+1
-        jsr ARGNUM
-        bcc @e
-        lda ACC
-        sta W1
-        sta W2
-        lda ACC+1
-        sta W1+1
-        sta W2+1
-        jsr PK
-        cmp #','
-        bne @e
-        inc SI
-        jsr ARGNUM
-        bcs *+5      ; far branch: bcc SYNERRJ
-        jmp SYNERRJ
-        lda ACC
-        sta W2
-        lda ACC+1
-        sta W2+1
-@e:     jsr ENDARG
+C_LIST: jsr RANGE
         lda PP
         sta LP
         lda PP+1
@@ -1771,22 +1878,33 @@ C_LIST: lda #0
         bcs @d
         ldy #2
         lda (LP),y
-        cmp W2+1
+        cmp LS2+1
         bcc @in
+        bne @gt
+        dey
+        lda (LP),y
+        cmp LS2
+        beq @in
+        bcs @gt
+        bcc @in
+@gt:    ldy #2                  ; past the end: only the first requested line itself still counts
+        lda (LP),y
+        cmp LS1+1
+        bcc @sk
         bne @d
         dey
         lda (LP),y
-        cmp W2
-        beq @in
-        bcs @d
+        cmp LS1
+        bcc @sk
+        bne @d
 @in:    ldy #2                  ; below the first requested line ?
         lda (LP),y
-        cmp W1+1
+        cmp LS1+1
         bcc @sk
         bne @do
         dey
         lda (LP),y
-        cmp W1
+        cmp LS1
         bcc @sk
 @do:    jsr LISTLN
 @sk:    ldy #0
@@ -1800,9 +1918,8 @@ C_LIST: lda #0
 @d:     jmp DONE
 
 ; LPUT: print A, continuing a long line with a 6 space indent
-LPUT:   jmp PUTC
 
-; LWRAP: before a listed element: past column 31 continue on a new line with a 6 space indent
+; LWRAP: after a listed token (not after a name, a number or a string): from column 32 on, continue on a new line with a 6 space indent
 LWRAP:  pha
         lda COL
         cmp #32
@@ -1841,7 +1958,7 @@ LNUM:   lda #0
         bne @d
 @p:     pla
         beq @r
-        jsr LPUT
+        jsr PUTC
         jmp @p
 @r:     rts
 
@@ -1876,7 +1993,7 @@ LTEXT:  sta T2
 @p:     lda (PTR),y
         pha
         and #$7F
-        jsr LPUT
+        jsr PUTC
         pla
         iny
         cmp #$80
@@ -1914,12 +2031,12 @@ LISTLN: lda #0
         tax
         beq @np
 @pad:   lda #' '
-        jsr LPUT
+        jsr PUTC
         dex
         bne @pad
 @np:    jsr LNUM
         lda #' '
-        jsr LPUT
+        jsr PUTC
         lda LP
         clc
         adc #3
@@ -1930,24 +2047,24 @@ LISTLN: lda #0
 @t:     ldy #0
         lda (CNT),y
         inc16 CNT
-        jsr LWRAP
         cmp #$01
-        bne *+5      ; far branch: beq @end
-        jmp @end
+        beq @isl14      ; via island: @end
         cmp #$5D
-        beq @rem
+        beq @isl15      ; via island: @rem
         cmp #$28
-        bne *+5      ; far branch: beq @lit
-        jmp @lit
+        beq @isl16      ; via island: @lit
         cmp #$C1
         bcc @n1
         cmp #$DB
         bcs @n1
         and #$7F
-        jsr LPUT
+        jsr PUTC
         lda #1
         sta PNM
         jmp @t
+@isl14: jmp @end      ; branch island
+@isl15: jmp @rem      ; branch island
+@isl16: jmp @lit      ; branch island
 @n1:    cmp #$B0
         bcc @o
         cmp #$BA
@@ -1955,7 +2072,7 @@ LISTLN: lda #0
         ldx PNM
         beq @const
         and #$7F
-        jsr LPUT
+        jsr PUTC
         lda #0
         sta PNM
         jmp @t
@@ -1972,10 +2089,12 @@ LISTLN: lda #0
         bcc @cn
         inc CNT+1
 @cn:    jsr LNUM
+        jsr LWRAP
         jmp @t
 @o:     ldx #0
         stx PNM
         jsr LTEXT
+        jsr LWRAP
         jmp @t
 @rem:   jsr LTEXT
 @rl:    ldy #0
@@ -1984,11 +2103,11 @@ LISTLN: lda #0
         cmp #$01
         beq @end
         and #$7F
-        jsr LPUT
+        jsr PUTC
         jsr LCW
         jmp @rl
 @lit:   lda #'"'
-        jsr LPUT
+        jsr PUTC
         jsr LCW
 @ll:    ldy #0
         lda (CNT),y
@@ -1996,12 +2115,12 @@ LISTLN: lda #0
         cmp #$29
         beq @le
         and #$7F
-        jsr LPUT
+        jsr PUTC
         jsr LCW
         jmp @ll
 @le:    lda #'"'
-        jsr LPUT
-        jsr LCW
+        jsr PUTC
+        jsr LWRAP
         jmp @t
 @end:   jmp CRLF
 
@@ -2021,12 +2140,24 @@ ERRMSG: ldx #3
         jsr PRSTR
 @n:     jmp CRLF
 
+ER255: lda #E_255
+        bne ERROR
+ERBIG: lda #E_BIG
+        bne ERROR
+ERMEM: lda #E_MEM
+        bne ERROR
+EROVF: lda #E_OVF
+        bne ERROR
+ERRNG: lda #E_RNG
+        bne ERROR
+ERSTR: lda #E_STR
+        bne ERROR
+ERDIM:  lda #E_DIM
 ERROR:  sta T1
         ldx #$FF
         txs
         lda INPF
-        beq *+5      ; far branch: bne INPERR
-        jmp INPERR
+        bne @isl17      ; via island: INPERR
         jsr ERRMSG
         lda T1
         cmp #E_END
@@ -2035,6 +2166,7 @@ ERROR:  sta T1
         bne @p
         jsr STOPAT
 @p:     jmp PROMPT
+@isl17: jmp INPERR      ; branch island
 
 STOPAT: setptr M_STOP
         jsr PRSTR
@@ -2057,8 +2189,6 @@ STOPKEY: ldx #$FF
 @s:     jsr STOPAT
 @p:     jmp PROMPT
 
-M_RET:  .byte "RETYPE LIN", $C5
-
 ; ------------------------------------------------------------ executor
 SYNJ:   jmp SYNERR
 
@@ -2070,8 +2200,7 @@ EXEC:   jsr CHKKEY
         ldy #0
         lda (IP),y
         cmp #$C1
-        bcc *+5      ; far branch: bcs S_ASSIGN
-        jmp S_ASSIGN
+        bcs @isl18      ; via island: S_ASSIGN
         sec
         sbc #$4D
         bcc SYNJ
@@ -2087,14 +2216,15 @@ EXEC:   jsr CHKKEY
         sta PTR
         lda STAB+1,x
         sta PTR+1
-        inc16 IP
+        jsr INCIP
         jmp (PTR)
+@isl18: jmp S_ASSIGN      ; branch island
 
 ENDST:  ldy #0
         lda (IP),y
         cmp #$03
         bne @e1
-        inc16 IP
+        jsr INCIP
         jmp EXEC
 @e1:    cmp #$01
         bne SYNJ
@@ -2128,7 +2258,7 @@ S_REM:  ldy #0
 @l:     lda (IP),y
         cmp #$01
         beq @e
-        inc16 IP
+        jsr INCIP
         jmp @l
 @e:     jmp ENDST
 S_LET:  jmp EXEC                ; LET: the name follows
@@ -2159,16 +2289,15 @@ S_POKE: jsr EVAL
         txa
         sta (PTR),y
         jmp ENDST
-@r:     lda #E_255
-        jmp ERROR
+@r:     jmp ER255
 
 ; EXPECT: next token must be A
 EXPECT: ldy #0
         cmp (IP),y
-        beq *+5      ; far branch: bne SYNJ
-        jmp SYNJ
-        inc16 IP
+        bne @isl19      ; via island: SYNJ
+        jsr INCIP
         rts
+@isl19: jmp SYNJ      ; branch island
 RPAR:   lda #$72
         jmp EXPECT
 
@@ -2245,13 +2374,13 @@ S_IF:   jsr EVAL
         ora ACC+1
         beq @f
         lda (IP),y
-        inc16 IP
+        jsr INCIP
         cmp #$24
         beq @ln
         cmp #$25
-        beq *+5      ; far branch: bne SYNJ
-        jmp SYNJ
+        bne @isl20      ; via island: SYNJ
         jmp EXEC
+@isl20: jmp SYNJ      ; branch island
 @ln:    ldy #1
         lda (IP),y
         sta ACC
@@ -2266,12 +2395,10 @@ S_IF:   jsr EVAL
 SKIP:   ldy #0
 @l:     lda (IP),y
         cmp #$03
-        bne *+5      ; far branch: beq @r
-        jmp @r
+        beq @isl21      ; via island: @r
         cmp #$01
-        bne *+5      ; far branch: beq @r
-        jmp @r
-        inc16 IP
+        beq @isl21      ; via island: @r
+        jsr INCIP
         cmp #$5D
         beq @rem
         cmp #$28
@@ -2289,22 +2416,23 @@ SKIP:   ldy #0
         bcc @l
         inc IP+1
         jmp @l
+@isl21: jmp @r      ; branch island
 @nm:    lda (IP),y
         cmp #$B0
         bcc @l
         cmp #$BA
         bcs @l
-        inc16 IP
+        jsr INCIP
         jmp @l
 @lit:   lda (IP),y
-        inc16 IP
+        jsr INCIP
         cmp #$29
         bne @lit
         jmp @l
 @rem:   lda (IP),y
         cmp #$01
         beq @r
-        inc16 IP
+        jsr INCIP
         jmp @rem
 @r:     rts
 
@@ -2403,7 +2531,7 @@ S_FOR:  jsr LVNUM
         lda (IP),y
         cmp #$58
         bne @ds
-        inc16 IP
+        jsr INCIP
         lda W2+1
         pha
         lda W2
@@ -2525,14 +2653,13 @@ NEXT1:  ldx FORSP
         lda FORSTK+9,x
         sta IP+1
         jmp ENDST
-@ovf:   lda #E_BIG
-        jmp ERROR
+@ovf:   jmp ERBIG
 @exit:  stx FORSP
         ldy #0
         lda (IP),y
         cmp #$5A
         bne @en
-        inc16 IP
+        jsr INCIP
         jmp S_NEXT
 @en:    jmp ENDST
 
@@ -2561,7 +2688,7 @@ EXPR:   pha
         pha
         lda ACC
         pha
-        inc16 IP
+        jsr INCIP
         lda T3
         clc
         adc #1
@@ -2582,11 +2709,11 @@ OPND:   tsx
         bcs @ok
         lda #E_PAR
         jmp ERROR
+@isl22: jmp @var      ; branch island
 @ok:    ldy #0
         lda (IP),y
         cmp #$C1
-        bcc *+5      ; far branch: bcs @var
-        jmp @var
+        bcs @isl22      ; via island: @var
         cmp #$B0
         bcc @t
         cmp #$BA
@@ -2604,10 +2731,10 @@ OPND:   tsx
         bcc @r
         inc IP+1
 @r:     rts
+@isl23: jmp @slit      ; branch island
 @t:     cmp #$28
-        bne *+5      ; far branch: beq @slit
-        jmp @slit
-        inc16 IP
+        beq @isl23      ; via island: @slit
+        jsr INCIP
         cmp #$38
         bne @t1
         jsr EVAL
@@ -2642,7 +2769,7 @@ OPND:   tsx
         rts
 @t4:    cmp #$2E
         bcc @syn
-        cmp #$32
+        cmp #$33
         bcs @syn
         pha
         lda #$3F
@@ -2679,7 +2806,7 @@ OPND:   tsx
         jsr SEVAL3
         jmp SCMP
 
-FTAB:   .word F_PEEK, F_RND, F_SGN, F_ABS
+FTAB:   .word F_PEEK, F_RND, F_SGN, F_ABS, F_KEY
 F_PEEK: lda ACC
         sta PTR
         lda ACC+1
@@ -2693,6 +2820,8 @@ F_SGN:  lda ACC+1
         bmi @n
         ora ACC
         beq @z
+        lda #0
+        sta ACC+1               ; the high byte of a positive value must be cleared
         lda #1
         bne @s
 @n:     lda #$FF
@@ -2700,6 +2829,28 @@ F_SGN:  lda ACC+1
 @s:     sta ACC
         rts
 @z:     rts
+; KEY(n): the code of the key pressed (7 bits, the key is consumed), 0 when none;
+; with n<>0 it waits for a key.  Ctrl-C stops the program.  Once a program has used KEY
+; it no longer stops on a pending key (only KEY sees the keyboard).
+F_KEY:  lda ACC
+        ora ACC+1
+        tax
+        lda #1
+        sta KEYF
+@w:     lda KBDCR
+        bmi @g
+        txa
+        beq @s
+        bne @w
+@g:     lda KBD
+        and #$7F
+        cmp #3
+        beq @brk
+@s:     sta ACC
+        lda #0
+        sta ACC+1
+        rts
+@brk:   jmp STOPKEY
 F_ABS:  lda ACC+1
         bpl @r
         jmp NEG
@@ -2707,8 +2858,7 @@ F_ABS:  lda ACC+1
 F_RND:  lda ACC
         ora ACC+1
         bne @n
-        lda #E_BIG
-        jmp ERROR
+        jmp ERBIG
 @n:     lda RS+1
         lsr a
         lda RS
@@ -2754,8 +2904,7 @@ NEG:    lda ACC
         bne @r
         lda ACC
         bne @r
-        lda #E_BIG
-        jmp ERROR
+        jmp ERBIG
 @r:     rts
 
 ; UDIV: TMP / ACC unsigned; quotient in TMP, remainder in W1 (ACC <> 0 assumed)
@@ -2813,8 +2962,7 @@ FIXSG:  lda ACC+1
         bpl @r
         jmp NEG
 @r:     rts
-OVF:    lda #E_BIG
-        jmp ERROR
+OVF:    jmp ERBIG
 
 ; APPLY: ACC = TMP (op A) ACC
 APPLY:  cmp #$16
@@ -3013,14 +3161,14 @@ POW:    lda ACC+1
 NAMEPARSE: ldy #0
         lda (IP),y
         sta NK1
-        inc16 IP
+        jsr INCIP
         lda (IP),y
         cmp #$B0
         bcc @nd
         cmp #$BA
         bcs @nd
         sta NK2
-        inc16 IP
+        jsr INCIP
         rts
 @nd:    lda #0
         sta NK2
@@ -3089,8 +3237,7 @@ CREATE: sta T3
         bne @mem
         cpx PP
         bcc @ok
-@mem:   lda #E_MEM
-        jmp ERROR
+@mem:   jmp ERMEM
 @ok:    lda PV
         sta VP
         lda PV+1
@@ -3153,6 +3300,7 @@ LVNUM2: ldy #0
         bcc @r
         inc VP+1
 @r:     rts
+@isl24: jmp @rng      ; branch island
 @arr:   inc16 IP
         lda NK2
         pha
@@ -3165,12 +3313,10 @@ LVNUM2: ldy #0
         pla
         sta NK2
         lda ACC+1
-        bpl *+5      ; far branch: bmi @rng
-        jmp @rng
+        bmi @isl24      ; via island: @rng
         lda ACC
         ora ACC+1
-        bne *+5      ; far branch: beq @rng
-        jmp @rng
+        beq @isl24      ; via island: @rng
         ldx #1
         jsr LOOKUP
         bcs @g
@@ -3181,10 +3327,10 @@ LVNUM2: ldy #0
         lda #1
         jsr CREATE
 @g:     lda ACC+1
-        bmi @rng
+        bmi @isl24      ; via island: @rng
         lda ACC
         ora ACC+1
-        beq @rng
+        beq @isl24      ; via island: @rng
         dec16 ACC
         asl ACC
         rol ACC+1
@@ -3218,8 +3364,7 @@ LVNUM2: ldy #0
         bcc @r2
         inc VP+1
 @r2:    rts
-@rng:   lda #E_RNG
-        jmp ERROR
+@rng:   jmp ERRNG
 
 ; ------------------------------------------------------------ strings
 ; STRVAR: NK set and the $ consumed: VP = entry (created with 80 characters)
@@ -3239,7 +3384,7 @@ SEVAL:  ldy #0
         lda (IP),y
         cmp #$28
         bne @v
-        inc16 IP
+        jsr INCIP
         lda IP
         sta SPT
         lda IP+1
@@ -3265,7 +3410,7 @@ SEVAL:  ldy #0
         lda (IP),y
         cmp #$40
         bne @syn
-        inc16 IP
+        jsr INCIP
         jmp SEVAL3
 @syn:   jmp SYNERR
 
@@ -3288,9 +3433,12 @@ SEVAL3: jsr STRVAR
         lda #$80
         sta ACC+1
         jmp @go
+@isl25: jmp ER255      ; branch island
+@isl26: jmp @str      ; branch island
 @sub:   inc16 IP
         jsr EVAL
         lda ACC+1
+        bne @isl25      ; via island: ER255
         pha
         lda ACC
         pha
@@ -3302,8 +3450,10 @@ SEVAL3: jsr STRVAR
         lda (IP),y
         cmp #$23
         bne @noe
-        inc16 IP
+        jsr INCIP
         jsr EVAL
+        lda ACC+1
+        bne @isl25      ; via island: ER255
 @noe:   jsr RPAR
         pla
         sta TMP
@@ -3320,14 +3470,12 @@ SEVAL3: jsr STRVAR
         cmp #$FF
         beq @sok
         lda TMP+1
-        beq *+5      ; far branch: bne @str
-        jmp @str
+        bne @isl26      ; via island: @str
         lda TMP
-        bne *+5      ; far branch: beq @str
-        jmp @str
+        beq @isl26      ; via island: @str
         cmp T1
         beq @sok
-        bcs @str
+        bcs @isl26      ; via island: @str
 @sok:   lda ACC+1               ; end
         cmp #$80
         bne @e1
@@ -3336,11 +3484,16 @@ SEVAL3: jsr STRVAR
         lda #0
         sta ACC+1
 @e1:    lda ACC+1
-        bne @str
+        bne @isl27      ; via island: @str
         lda ACC
         cmp TMP
         bcs @e2
-        lda #0                  ; end < start: empty
+        lda TMP                 ; end = start-1: an empty string, anything lower is a STRING ERR
+        sec
+        sbc ACC
+        cmp #1
+        bne @str
+        lda #0
         sta SLN
         beq @sp
 @e2:    cmp T1
@@ -3365,8 +3518,8 @@ SEVAL3: jsr STRVAR
         bcc @r
         inc SPT+1
 @r:     rts
-@str:   lda #E_STR
-        jmp ERROR
+@isl27: jmp @str      ; branch island
+@str:   jmp ERSTR
 
 ; SCMP: compare the string in SPT/SLN with the one after = or #
 SCMP:   lda SPT
@@ -3377,7 +3530,7 @@ SCMP:   lda SPT
         pha
         ldy #0
         lda (IP),y
-        inc16 IP
+        jsr INCIP
         cmp #$39
         beq @e
         cmp #$3A
@@ -3453,14 +3606,15 @@ S_ASSIGN: jsr NAMEPARSE
         lda (IP),y
         cmp #$42
         bne @ns
-        inc16 IP
+        jsr INCIP
         jsr EVAL
         jsr RPAR
         lda ACC+1
-        bne @bad
+        bne @isl28      ; via island: ER255
         lda ACC
         beq @bad
         jmp @s1
+@isl28: jmp ER255      ; branch island
 @ns:    lda #1
 @s1:    pha
         lda #$70
@@ -3474,8 +3628,7 @@ S_ASSIGN: jsr NAMEPARSE
         sta VP
         jsr STRSET
         jmp ENDST
-@bad:   lda #E_STR
-        jmp ERROR
+@bad:   jmp ERSTR
 
 ; STRSET: store SPT/SLN in the string VP from the index T1 (1 = whole)
 STRSET: ldy #5
@@ -3487,8 +3640,7 @@ STRSET: ldy #5
         sta W1                  ; offset
         cmp T2
         beq @o
-        bcc *+5      ; far branch: bcs @bad
-        jmp @bad
+        bcs @isl29      ; via island: @bad
 @o:     ldy #3
         lda (VP),y
         sec
@@ -3529,10 +3681,9 @@ STRSET: ldy #5
         cmp SLN
         bcc @ovf
         rts
-@ovf:   lda #E_OVF
-        jmp ERROR
-@bad:   lda #E_STR
-        jmp ERROR
+@isl29: jmp @bad      ; branch island
+@ovf:   jmp EROVF
+@bad:   jmp ERSTR
 
 S_DIM:  lda TOK
         cmp #$4E
@@ -3547,7 +3698,7 @@ S_DIM:  lda TOK
         beq @s2
         cmp #$44
         bne @e
-        inc16 IP
+        jsr INCIP
         lda #0
         jsr DIMIT
         jmp @nx
@@ -3581,14 +3732,12 @@ DIMIT:  pha
         pla
         beq @n2
         lda ACC+1
-        beq *+5      ; far branch: bne @b255
-        jmp @b255
+        bne @isl30      ; via island: @b255
         lda ACC
-        bne *+5      ; far branch: beq @bstr
-        jmp @bstr
+        beq @isl31      ; via island: @bstr
         ldx #2
         jsr LOOKUP
-        bcs @rd2
+        bcs @isl32      ; via island: @rd2
         lda ACC
         clc
         adc #6
@@ -3598,16 +3747,19 @@ DIMIT:  pha
         sta W1+1
         lda #2
         jmp CREATE
+@isl30: jmp @b255      ; branch island
+@isl31: jmp @bstr      ; branch island
+@isl32: jmp @rd2      ; branch island
+@isl33: jmp @rng      ; branch island
+@isl34: jmp @rd1      ; branch island
 @n2:    lda ACC+1
-        bpl *+5      ; far branch: bmi @rng
-        jmp @rng
+        bmi @isl33      ; via island: @rng
         lda ACC
         ora ACC+1
-        bne *+5      ; far branch: beq @rng
-        jmp @rng
+        beq @isl33      ; via island: @rng
         ldx #1
         jsr LOOKUP
-        bcs @rd1
+        bcs @isl34      ; via island: @rd1
         asl ACC
         rol ACC+1
         clc
@@ -3617,16 +3769,18 @@ DIMIT:  pha
         lda ACC+1
         adc #0
         sta W1+1
-        bcs @mem
+        bcs @isl35      ; via island: @mem
         lda #1
         jmp CREATE
+@isl35: jmp @mem      ; branch island
+@isl36: jmp REDIM      ; branch island
 @rd2:   lda ACC                 ; DIM of an existing string: fine when it is not larger
         clc
         adc #6
         sta W1
         lda #0
         sta W1+1
-        beq REDIM
+        beq @isl36      ; via island: REDIM
 @rd1:   asl ACC                 ; DIM of an existing array
         rol ACC+1
         lda ACC
@@ -3637,16 +3791,11 @@ DIMIT:  pha
         adc #0
         sta W1+1
         jmp REDIM
-@b255:  lda #E_255              ; DIM A$(0) is a STRING error, more than 255 a >255 error
-        jmp ERROR
-@bstr:  lda #E_STR
-        jmp ERROR
-@dim:   lda #E_DIM
-        jmp ERROR
-@rng:   lda #E_RNG
-        jmp ERROR
-@mem:   lda #E_MEM
-        jmp ERROR
+@b255:  jmp ER255
+@bstr:  jmp ERSTR
+@dim:   jmp ERDIM
+@rng:   jmp ERRNG
+@mem:   jmp ERMEM
 
 REDIM:  ldy #3                  ; old size - new size >= 0 ?
         lda (VP),y
@@ -3656,8 +3805,7 @@ REDIM:  ldy #3                  ; old size - new size >= 0 ?
         lda (VP),y
         sbc W1+1
         bcs @ok
-        lda #E_DIM
-        jmp ERROR
+        jmp ERDIM
 @ok:    rts
 
 
@@ -3667,20 +3815,21 @@ S_INPUT: lda #1
         sta NOQ
         lda TOK
         cmp #$53
-        bne INVAR2
-        inc16 IP
+        bne @isl37      ; via island: INVAR2
+        jsr INCIP
 @p:     ldy #0
         lda (IP),y
-        inc16 IP
+        jsr INCIP
         cmp #$29
         beq @pd
         and #$7F
         jsr PUTC
         jmp @p
+@isl37: jmp INVAR2      ; branch island
 @pd:    ldy #0
         lda (IP),y
         sta TOK
-        inc16 IP
+        jsr INCIP
         lda #1
         sta NOQ
 INVAR2: lda IP
@@ -3706,7 +3855,7 @@ INVAR2: lda IP
         sta INPF
         lda TOK
         cmp #$52
-        beq @sv
+        beq @isl38      ; via island: @sv
         cmp #$26
         beq @sv
         jsr INNUM
@@ -3720,6 +3869,7 @@ INVAR2: lda IP
         lda ACC+1
         sta (VP),y
         jmp @after
+@isl38: jmp @sv      ; branch island
 @sv:    jsr NAMEPARSE
         lda #$40
         jsr EXPECT
@@ -3740,8 +3890,7 @@ INVAR2: lda IP
         sbc #6
         cmp T2
         bcs @fit
-        lda #E_OVF
-        jmp ERROR
+        jmp EROVF
 @fit:   lda VP
         clc
         adc #6
@@ -3779,7 +3928,7 @@ INVAR2: lda IP
         cmp #$27
         bne @e
 @nx:    sta TOK
-        inc16 IP
+        jsr INCIP
         jmp INVAR2
 @e:     lda NOQ                 ; with a prompt string: a blank line after the answer
         beq @ne
@@ -3799,15 +3948,16 @@ INNUM:  lda IDX
         pha
         jsr PK
         cmp #'0'
-        bcc @syn
+        bcc @isl39      ; via island: @syn
         cmp #'9'+1
-        bcs @syn
+        bcs @isl39      ; via island: @syn
         jsr DIGITS
         jsr PK
         cmp #','
         bne @c
         inc SI
         jmp @ok
+@isl39: jmp @syn      ; branch island
 @c:     cmp #CR
         bne @syn
 @ok:    lda SI

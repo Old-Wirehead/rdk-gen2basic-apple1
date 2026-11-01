@@ -35,17 +35,78 @@ for line in src:
         pre.append(line)
 
 far = set()
-gen = os.path.join(here, "rdkbasic.gen.s")
-for _ in range(12):
-    lines = []
+redirect = {}      # pre index of a short branch -> label of a nearby "jmp target" island
+islands = {}       # pre index (insert before) -> list of [label, target]
+BR = r'^(\s+)(b[a-z]{2})\s+([@A-Za-z_][A-Za-z_0-9]*)(\s*;.*)?$'
+GLOB = re.compile(r'^[A-Za-z_][A-Za-z_0-9]*:')
+nisl = [0]
+refused = {}     # pre index -> islands that were too far for it
+
+def instr(line):
+    s = re.sub(r';.*', '', line)
+    s = re.sub(r'^\s*[@A-Za-z_][A-Za-z_0-9]*:', '', s).strip()
+    return s
+
+def uncond_before(p):
+    j = p - 1
+    while j >= 0 and not instr(pre[j]):
+        if re.match(r'^\s*[@A-Za-z_][A-Za-z_0-9]*:', pre[j]):
+            return False        # a label alone: code may flow into it
+        j -= 1
+    if j < 0:
+        return False
+    s = instr(pre[j])
+    return s == 'rts' or s.startswith('jmp ')
+
+def find_island(i, tgt):
+    for lbl_p, lst_ in islands.items():
+        pass
+    cands = []
+    for d in range(0, 45):
+        for p in (i + d, i - d):
+            if 0 < p < len(pre) and p not in [c for c in cands]:
+                cands.append(p)
+    for p in cands:
+        lo, hi = (i + 1, p) if p > i else (p, i + 1)
+        if any(GLOB.match(pre[k]) for k in range(lo, hi)):
+            continue
+        if p in islands:
+            for lb, tg in islands[p]:
+                if tg == tgt and lb not in refused.get(i, ()):
+                    return lb
+        if not uncond_before(p):
+            continue
+        nisl[0] += 1
+        lb = "@isl%d" % nisl[0]
+        islands.setdefault(p, []).append([lb, tgt])
+        return lb
+    return None
+
+def build_lines():
+    used = set(redirect.values())
+    lines, mapping = [], []
     for i, line in enumerate(pre):
-        m = re.match(r'^(\s+)(b[a-z]{2})\s+([@A-Za-z_][A-Za-z_0-9]*)(\s*;.*)?$', line)
+        for lb, tg in islands.get(i, []):
+            if lb in used:
+                lines.append(f"{lb}: jmp {tg}      ; branch island")
+                mapping.append(i)
+        m = re.match(BR, line)
         if i in far and m:
             ind, op, tgt = m.group(1), m.group(2), m.group(3)
             lines.append(f"{ind}{INV[op]} *+5      ; far branch: {op} {tgt}")
             lines.append(f"{ind}jmp {tgt}")
+            mapping += [i, i]
+        elif i in redirect and m:
+            lines.append(f"{m.group(1)}{m.group(2)} {redirect[i]}      ; via island: {m.group(3)}")
+            mapping.append(i)
         else:
             lines.append(line)
+            mapping.append(i)
+    return lines, mapping
+
+gen = os.path.join(here, "rdkbasic.gen.s")
+for _ in range(60):
+    lines, mapping = build_lines()
     open(gen, "w").write("\n".join(lines))
     cmd = [asm, "asm", gen, "-o", out] + (["-l", lst] if lst else [])
     r = subprocess.run(cmd, capture_output=True, text=True)
@@ -55,19 +116,29 @@ for _ in range(12):
         m = re.match(r'.*?:(\d+):\d+ : branchement trop loin', e)
         if m:
             bad.append(int(m.group(1)) - 1)
-    # map generated line numbers back to pre[] indices
     if not bad:
         print((r.stdout + r.stderr).strip())
         sys.exit(r.returncode)
-    # generated line -> pre index
-    mapping = []
-    for i, line in enumerate(pre):
-        mapping.append(i)
-        if i in far and re.match(r'^(\s+)(b[a-z]{2})\s+([@A-Za-z_][A-Za-z_0-9]*)(\s*;.*)?$', line):
-            mapping.append(i)
-    for b in bad:
-        far.add(mapping[b])
     other = [e for e in errs if e and 'branchement trop loin' not in e]
-    if other and not bad:
-        print("\n".join(other)); sys.exit(1)
+    for b in bad:
+        i = mapping[b]
+        m = re.match(BR, pre[i])
+        if i in redirect:
+            refused.setdefault(i, set()).add(redirect[i]); del redirect[i]
+            if len(refused[i]) > 3:
+                far.add(i)
+            else:
+                lb = find_island(i, m.group(3))
+                if lb:
+                    redirect[i] = lb
+                else:
+                    far.add(i)
+        elif m:
+            lb = find_island(i, m.group(3))
+            if lb:
+                redirect[i] = lb
+            else:
+                far.add(i)
+        else:
+            far.add(i)
 print("did not converge"); sys.exit(1)
