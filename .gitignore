@@ -24,3 +24,7 @@ roms/
 .vscode/
 .idea/
 __pycache__/
+
+# our own MIT-licensed build of G2 Basic and the test fixture are shipped
+!bin/rdk-g2basic.bin
+!tests/gen2-fake-card.bin
