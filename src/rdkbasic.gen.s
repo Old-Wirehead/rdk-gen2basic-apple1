@@ -103,6 +103,7 @@ E_PAR   = 15
 
         .org $E000
         jmp COLD
+        .byte "RDK", 1         ; identification at $E003 (RDK G2 Basic, version 1)
 
 ; ------------------------------------------------------------ data tables
 ; `hs "TEXT"` = the text with bit 7 set on the last character (build.py)
