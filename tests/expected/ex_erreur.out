@@ -1,0 +1,45 @@
+\
+E000R
+
+E000: 4C
+>SCR
+
+>10 REM TWO ERRORS TO FIX
+>20 PRINT "HELLO
+*** SYNTAX ERR
+>30 FOR I=1 TO 10
+>40 PRINT I*I
+>50 NEXT I
+>60 LET TOTAL=I
+*** SYNTAX ERR
+>70 END
+>RUN
+1
+4
+9
+16
+25
+36
+49
+64
+81
+100
+
+>5
+>3
+>7
+>2
+>9
+>1
+>4
+>6
+>8
+>10
+>Y
+*** SYNTAX ERR
+>N
+*** SYNTAX ERR
+>1
+>2
+>3
+>

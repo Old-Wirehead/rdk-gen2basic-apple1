@@ -1,0 +1,4 @@
+#KEY:ABC
+PRINT 1
+#KEY:
+PRINT 2

@@ -1,0 +1,45 @@
+\
+E000R
+
+E000: 4C
+>PRINT Z$
+
+
+>PRINT LEN(Z$)
+0
+
+>Z$="AB"
+*** STR OVFL ERR
+>PRINT Z$
+A
+
+>Z$="ABC"
+*** STR OVFL ERR
+>Y$=""
+
+>PRINT LEN(Y$)
+0
+
+>Y$="A"
+
+>X$="ABCD"
+*** STR OVFL ERR
+>X$="AB"
+*** STR OVFL ERR
+>PRINT X$
+A
+
+>PRINT LEN(X$)
+1
+
+>X$="ABCDE"
+*** STR OVFL ERR
+>10 W$="XY"
+>20 W$="ABC"
+>RUN
+*** STR OVFL ERR
+STOPPED AT 10
+>RUN
+*** STR OVFL ERR
+STOPPED AT 10
+>

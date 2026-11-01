@@ -1,0 +1,33 @@
+\
+E000R
+
+E000: 4C
+>SCR
+
+>10 S=0
+>20 FOR I=1 TO 10
+>30 S=S+I
+>40 NEXT I
+>50 PRINT "SUM = ";S
+>60 END
+>RUN
+SUM = 55
+
+>5
+>3
+>7
+>2
+>9
+>1
+>4
+>6
+>8
+>10
+>Y
+*** SYNTAX ERR
+>N
+*** SYNTAX ERR
+>1
+>2
+>3
+>

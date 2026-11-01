@@ -1,0 +1,21 @@
+\
+E000R
+
+E000: 4C
+>10 INPUT X
+>20 INPUT Y
+>30 INPUT "P",Z
+>40 PRINT "D"
+>50 INPUT "Q",Z
+>60 INPUT Z
+>RUN
+?1
+?2
+P?3
+
+D
+Q?4
+
+?5
+*** END ERR
+>

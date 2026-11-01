@@ -1,0 +1,17 @@
+PRINT Z$
+PRINT LEN(Z$)
+Z$="AB"
+PRINT Z$
+Z$="ABC"
+Y$=""
+PRINT LEN(Y$)
+Y$="A"
+X$="ABCD"
+X$="AB"
+PRINT X$
+PRINT LEN(X$)
+X$="ABCDE"
+10 W$="XY"
+20 W$="ABC"
+RUN
+RUN

@@ -4,7 +4,7 @@ A clean-room, Integer BASIC-compatible interpreter for the Apple 1, written from
 
 - **Compatible:** same syntax, same tokens and same tape format as the original Apple 1 Integer BASIC, so existing programs and tapes keep working.
 - **Fixed:** the known bugs of the original are corrected.
-- **Extended:** new statements for the GEN2 color graphics card.
+- **Extended:** starts the GEN2 color graphics card driver when it finds one (graphics statements come in version 2).
 
 RDK BASIC is part of the **Retro Dev Kit** family, alongside [Retro Dev Kit Apple 1](https://github.com/Old-Wirehead/rdk-apple1).
 
@@ -12,7 +12,16 @@ RDK BASIC is part of the **Retro Dev Kit** family, alongside [Retro Dev Kit Appl
 
 ## Status
 
-Design phase, no code yet. See the design note (in French): [docs/conception/basic-rdk.md](docs/conception/basic-rdk.md).
+Version 1.0: complete interpreter, 7,709 bytes at `$E000`, **22 test sessions identical to the original's output**.
+No graphics statements yet. See the [manual](docs/manual.md) (in English), the design note
+(in French): [docs/conception/basic-rdk.md](docs/conception/basic-rdk.md).
+
+```
+python3 src/build.py --asm /path/to/apple1-emu bin/rdk-g2basic.bin   # build
+tests/run-tests.sh                                                   # test
+```
+
+The binary is `bin/rdk-g2basic.bin` (load at `$E000`, start with `E000R`). It needs RAM at `$E000-$FEFF`.
 
 ## Clean-room statement
 
