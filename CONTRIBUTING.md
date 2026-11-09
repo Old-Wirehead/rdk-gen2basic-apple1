@@ -1,69 +1,57 @@
-# Contribuer à RDK G2 Basic Apple 1
+# Contribuer à RDK G2 Basic
 
-Ce dépôt (le BASIC intégré au Retro Dev Kit Apple 1) est développé par Wirehead (Old-Wirehead) avec plusieurs IA. **Rusty** est le développeur en chef : il relit et fusionne tout ce qui arrive sur `main`. Chaque IA lit ce fichier en premier quand elle reprend le travail.
+RDK BASIC est un interpréteur Integer BASIC **écrit de zéro en assembleur 6502** pour l'Apple-1 : même syntaxe, mêmes jetons, même format de cassette que l'original, avec ses bogues connus corrigés, et des extensions pour la carte couleur GEN2 d'Uncle Bernie. Il est intégré au [Retro Dev Kit Apple 1](https://github.com/Old-Wirehead/rdk-apple1) sous forme d'une image de 7 933 octets chargée en `$E000`.
 
-## Rôles
-
-| Qui | Rôle |
-|---|---|
-| Wirehead | Chef de projet : décide des priorités, valide les versions, publie (tags, releases). |
-| Rusty | Développeur en chef : seul à pousser sur `main`, relit et fusionne les demandes de fusion. |
-| Autres IA (Claude, etc.) | Proposent sur leur branche, via une demande de fusion. Jamais de poussée directe sur `main`. |
-
-Aucune IA ne crée de tag ni de release : c'est réservé à Wirehead.
-
-## Identité et signature
-
-Tant que tout le monde publie avec le compte Old-Wirehead, chaque IA **signe** ses issues, commentaires et demandes de fusion à la fin : « — Claude IA », « — Rusty », etc. Les messages de commit commencent par le nom de l'IA entre crochets : `[Claude] Corrige …`.
-
-## Branches
-
-- `main` : version courante, alimentée uniquement par Rusty.
-- `<ia>/<sujet>` : une branche par sujet, préfixée par le nom de l'IA en minuscules, par exemple `claude/del-plages` ou `claude/mot-cle-key`.
-- Une branche par sujet, partie du dernier `main`. Ne pas réécrire l'historique d'une branche déjà relue.
-
-## Demandes de fusion (pull requests)
-
-1. Ouvrir la demande vers `main` depuis sa branche, avec un titre clair et une description : ce qui change, pourquoi, comment c'est testé.
-2. Lier l'issue concernée (`Corrige #3`).
-3. Les tests doivent passer : `tests/run-tests.sh` (toutes les sessions identiques à la sortie de l'Integer BASIC original). Construire avec `python3 src/build.py --asm /chemin/vers/apple1-emu bin/rdk-g2basic.bin`.
-4. Rusty relit, demande des corrections si besoin, puis fusionne. Il peut aussi reprendre lui-même une partie du travail en le signalant.
-
-## Ce que chaque IA peut modifier
-
-- **Code, tests et documentation** : uniquement par demande de fusion, dans le périmètre de l'issue traitée.
-- **Écriture en salle blanche** : G2 Basic est réécrit sans copier l'Integer BASIC d'Apple. Ne jamais coller ni désassembler du code de l'original dans ce dépôt ; la comparaison se fait seulement sur la sortie des sessions de test.
-- **Nouveaux mots clés** : toute extension par rapport à l'Integer BASIC (comme `KEY`, `LOMEM=`, `HIMEM=`) s'accompagne d'une session de test et d'une mise à jour de la documentation.
-- Après une modification, Rusty intègre la nouvelle image dans rdk-apple1.
-
-## Ce qui ne doit jamais être commité
-
-- Les ROM et l'Integer BASIC original, ni aucun fichier protégé par le droit d'auteur (jeux commerciaux, cassettes audio du commerce, livres, PDF).
-- La documentation préliminaire de la carte graphique d'Uncle Bernie, tant qu'il n'en a pas validé la version propre.
-- L'image binaire ou le désassemblage de l'Integer BASIC original, même pour les tests.
-- Aucun jeton, mot de passe ni clé.
-
-## Étiquettes
-
-| Étiquette | Sens |
-|---|---|
-| `bug` | Défaut constaté. |
-| `amélioration` | Demande de fonctionnalité. |
-| `doc` | Documentation. |
-| `à-faire-par-claude`, `à-faire-par-rusty`, … | Qui doit s'en occuper. |
-| `en-revue` | Demande de fusion en attente de relecture par Rusty. |
-| `bloqué` | En attente d'une décision de Wirehead ou d'une information extérieure. |
-
-## Discussions
-
-- Catégorie **« Coordination IA »** : répartition du travail, questions entre IA, comptes rendus de session. Mentionner l'IA visée avec `@nom` dans le texte, puisque toutes publient avec le même compte.
-- Les défauts et les demandes précises vont dans les **issues**, pas dans les discussions.
-- Les décisions de Wirehead priment toujours.
-
-## Langue
-
-Issues, discussions et commentaires en français. Le code et la documentation anglaise restent en anglais. En français, « Apple-1 » est masculin.
+Ce projet est développé par **Wirehead** (Old-Wirehead) avec l'aide de plusieurs IA. Ce fichier explique comment y contribuer, humain ou IA.
 
 ## Licence
 
-G2 Basic est sous **GPL-3.0-only** (voir [LICENSE](LICENSE) et [NOTICE](NOTICE)). Toute contribution est acceptée sous cette même licence. Le crédit d'Uncle Bernie pour l'ACI Gen2 et la carte GEN2 est maintenu, ainsi que la clause de non-responsabilité : ne pas la retirer d'un binaire redistribué.
+**GPL-3.0-only** : voir [LICENSE](LICENSE) et [NOTICE](NOTICE). Toute contribution est acceptée sous cette même licence.
+
+Le `NOTICE` crédite Uncle Bernie pour l'ACI Gen2 et la carte GEN2, et porte la **clause de non-responsabilité**. Ne la retirez pas d'une redistribution : c'est la seule chose qu'il ait demandée.
+
+## Écriture en salle blanche — la règle qui compte
+
+RDK BASIC ne contient **aucun code** de l'Integer BASIC d'Apple. Il a été écrit à partir de la spécification de comportement : les manuels publiés, l'observation en boîte noire de programmes chargés en mémoire, et notre propre description du format des jetons.
+
+Concrètement, pour toute contribution :
+
+- **ne jamais** désassembler, lire ni recopier l'interpréteur d'origine (`$E000-$EFFF`) ;
+- **ne jamais** coller dans ce dépôt une image, un listing ou un désassemblage de l'original, même pour un test ;
+- la comparaison avec l'original se fait **uniquement sur la sortie** des sessions de test, jamais sur le code.
+
+## Ce qui ne doit jamais être commité
+
+- une image de l'Integer BASIC d'Apple, son désassemblage, ou une cassette qui le contient ;
+- une ROM, un firmware ou un fichier protégé par le droit d'auteur (jeux commerciaux, cassettes du commerce, livres, PDF de tiers) ;
+- les documents non publiés d'Uncle Bernie sur la carte GEN2 ;
+- un jeton, un mot de passe ou une clé.
+
+## Comment travailler
+
+- **Une issue, un responsable** : ouvrez une issue ou prenez-en une, et annoncez-vous en commentaire avant de commencer.
+- **Une branche par sujet**, partie du dernier `main`, nommée `<ia>/<sujet>` ou `<pseudo>/<sujet>`.
+- **Une demande de fusion vers `main`**, avec un titre clair et une description : ce qui change, pourquoi, comment c'est testé, et le lien vers l'issue (`Corrige #12`).
+- L'auteur fusionne lui-même une fois les vérifications passées ; un autre contributeur relit après la fusion et ouvre une issue si quelque chose ne va pas.
+
+## Vérifications avant de fusionner
+
+1. Construire l'image et **la committer** si elle change :
+
+```
+python3 src/build.py --asm /chemin/vers/apple1-emu bin/rdk-g2basic.bin
+```
+
+2. Lancer les tests de régression, qui doivent tous passer :
+
+```
+tests/run-tests.sh
+```
+
+3. Pour tout nouveau mot-clé ou changement visible : **une session de test** dans `tests/sessions/` et sa sortie attendue dans `tests/expected/`, plus la mise à jour du [manuel](docs/manual.md).
+
+Le script accepte aussi `--real` pour comparer avec l'Integer BASIC d'origine, à condition de fournir `ORIG_ROM=/chemin/vers/integer_basic.bin` : cette image n'est **jamais** dans le dépôt.
+
+## Identité et signature
+
+Quand plusieurs personnes publient avec le même compte GitHub, chacune **signe** ses issues, commentaires et demandes de fusion à la fin : « — Claude IA », « — Rusty Jr », etc. Les messages de commit commencent par le nom de l'auteur entre crochets : `[Claude] Corrige…`, `[Rusty Jr] Ajoute…`.
