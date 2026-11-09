@@ -380,8 +380,11 @@ TOKTXT: .byte $03
         .byte 0
 
 ; ------------------------------------------------------------ start up
-; GEN2 driver signature at $0800-$0807.  TODO(Bernie): the real bytes, and the
-; A/X/Y parameters of the call at $0C00, are still to be specified.
+; GEN2 card driver: its signature sits at $0800-$0807, eight bytes defined by
+; the card's designer.  We test our own placeholder until the real bytes are
+; published.  The initialisation call at $0C00 may only be made once: it moves
+; the driver's code around and voids the signature.  Its A/X/Y parameters are
+; not specified yet either.
 GSIG:   .byte "GEN2CARD"
 M_RET:  .byte "RETYPE LIN", $C5
         .res $E2B3-*, 0         ; warm start entry (E2B3R), as the Apple-1 BASIC
@@ -445,7 +448,7 @@ COLD:   cld
         bne @nog
         dex
         bpl @sig
-        lda #0                  ; TODO(Bernie): parameters of the call
+        lda #0                  ; A, X, Y = 0: the call's parameters are not specified yet
         tax
         tay
         jsr $0C00               ; initialise the driver (once)

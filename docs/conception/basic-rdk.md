@@ -6,7 +6,7 @@ date: 25 octobre 2026
 
 <p class="lead">RDK BASIC est un clone, écrit de zéro en assembleur 6502, de l’Integer BASIC de l’Apple-1. Il reprend sa syntaxe, ses jetons et sa disposition en mémoire, il corrige les 15 défauts documentés de l’original, et il ajoute les instructions graphiques de la carte couleur GEN2 d’Uncle Bernie. Il est dédié à Uncle Bernie.</p>
 
-> **Disposition mémoire en cours de discussion avec Uncle Bernie** (LOMEM fourni par le pilote GEN2, programme qui grandit vers le haut depuis LOMEM). Les passages sur la mémoire ci-dessous (HIMEM, LOMEM, rangement du programme) ne sont pas définitifs.
+> **Disposition mémoire : ce qu'Uncle Bernie recommande** (réponse du 25 octobre 2026). Son pilote GEN2 occupe `$0C00-$1FFF` et pourra déborder sur les pages HIRES : le BASIC ne doit donc pas choisir une adresse fixe, mais **recevoir son LOMEM par un appel `JSR`** dont l'adresse reste à préciser, puis ranger dans l'ordre le programme tokenisé, les variables et l'espace des chaînes, celui-ci grandissant vers le haut ; « out of memory » quand le haut des chaînes touche le premier octet de l'interpréteur. Les adresses HIMEM et LOMEM décrites ci-dessous sont celles d'aujourd'hui, sans pilote GEN2 chargé, et devront suivre cette recommandation quand son pilote sera publié.
 
 ## Pourquoi un clone
 
@@ -50,15 +50,8 @@ Chaque fichier source portera l’en-tête « clean-room implementation, written
 
 La bannière s’affiche **seulement** au démarrage à froid, juste après la ligne `E000: 4C` du moniteur. Elle utilise le jeu de caractères de l’Apple-1 : majuscules, 40 colonnes au plus, pas de minuscules ni d’accents. Les messages sont rangés comme les messages d’erreur (dernier caractère bit 7 à 1) et affichés par la même routine. L’appel coûte environ 5 octets.
 
-| Variante | Écran | Octets |
-|---|---|---|
-| A (recommandée) | `RDK BASIC 1.0`<br>`DEDICATED TO UNCLE BERNIE` | 13 + 25 + 2 CR = **40** |
-| B | `RDK BASIC 1.0 - FOR UNCLE BERNIE` | 32 + 1 = **33** |
-| C | `RDK BASIC 1.0`<br>`FOR UNCLE BERNIE` | 13 + 16 + 2 = **31** |
+Un moment envisagée sur deux lignes (`RDK BASIC 1.0` puis une dédicace), la bannière tient finalement sur une seule, décision prise plus bas.
 
-> **Décision de Wirehead, 9 novembre 2026 :** la dédicace reste dans cette note et dans le README, mais **n'est plus affichée par le BASIC** : Uncle Bernie a demandé qu'on ne lui fasse pas d'éloge, et seule la ligne « RDK G2 BASIC 1.0 » apparaît désormais au démarrage.
-
-La variante A est la plus claire. Si le budget ROM coince en fin d’étape 5, on passe à C.
 
 **Dédicace pour le manuel (FR).**
 
