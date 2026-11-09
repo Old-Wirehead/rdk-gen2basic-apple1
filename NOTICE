@@ -1,0 +1,60 @@
+RDK BASIC — RDK G2 Basic Apple 1
+===============================
+
+Licence : GNU GPL version 3 seulement (GPL-3.0-only). Voir LICENSE.
+
+Copyright (c) 2026 Wirehead et les contributeurs du Retro Dev Kit.
+
+Ce programme est distribué sans aucune garantie, dans les termes de la GPL
+version 3 : voir les articles 15 et 16 du texte de licence. En particulier,
+l'auteur n'offre aucune garantie de fonctionnement sur une machine réelle,
+sur une carte GEN2 ou sur un kit.
+
+
+Crédits
+-------
+
+Uncle Bernie
+    Pour l'interface cassette ACI Gen2 et pour la carte graphique couleur
+    GEN2 de l'Apple-1. Ce BASIC a été écrit pour fonctionner avec sa carte ;
+    il lui est dédié.
+
+    Aucun document, courriel, texte non publié ni fichier de son travail
+    n'est inclus dans ce dépôt ni dans ses binaires. Les faits techniques
+    utilisés viennent de la documentation publique et de nos propres mesures.
+
+    La dédicace est un hommage de Wirehead. Elle ne signifie pas que Bernie
+    approuve ce programme, et elle ne l'engage d'aucune manière.
+
+Retro Dev Kit Apple 1
+    Pour l'émulateur, l'assembleur et l'outillage qui servent à construire et
+    à tester cette image (rdk-apple1, également GPL-3.0-only).
+
+
+Écriture en salle blanche
+-------------------------
+
+RDK BASIC ne contient aucun code de l'Integer BASIC d'Apple, ni aucun code de
+POM-1. Il a été écrit à partir de la spécification de comportement : les
+manuels publiés, l'observation en boîte noire de programmes chargés en
+mémoire, et notre propre description du format des jetons. Personne travaillant
+sur ce projet ne lit, ne désassemble ni ne copie l'interpréteur d'origine.
+
+Le dépôt ne contient aucune image de ROM, aucun BASIC sous droits, aucune
+cassette commerciale. Le BASIC original reste une option chargée localement
+par l'utilisateur, jamais une ressource distribuée.
+
+Les fichiers de `tests/expected/` sont des sorties produites par des programmes
+d'exemple exécutés sur l'Integer BASIC d'origine, utilisé comme boîte noire.
+Ce sont des sorties de programmes, pas du code d'interpréteur.
+
+
+Binaires
+--------
+
+`bin/rdk-g2basic.bin` est construit à partir de `src/` par `src/build.py`, et
+`tests/gen2-fake-card.bin` est une carte GEN2 factice écrite pour les tests.
+Ces fichiers sont couverts par la même licence que le source ; leur code source
+est dans ce dépôt, comme la GPL le demande.
+
+— Rusty Jr, 9 novembre 2026

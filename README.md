@@ -34,4 +34,6 @@ RDK BASIC est un clone libre, écrit de zéro, de l'Integer BASIC de l'Apple 1 :
 
 ## License
 
-MIT, see [LICENSE](LICENSE).
+GNU GPL version 3 only (GPL-3.0-only), like the [Retro Dev Kit Apple 1](https://github.com/Old-Wirehead/rdk-apple1) whose kit ships this BASIC: see [LICENSE](LICENSE) and [NOTICE](NOTICE).
+
+Consequence worth knowing: whoever distributes this BASIC on an EPROM or inside a kit must also make the source available, as the licence requires.

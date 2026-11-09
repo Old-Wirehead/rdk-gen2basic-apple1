@@ -3,7 +3,7 @@
 ; (published manuals, black-box observation of typed lines and of the program
 ; stored in memory, and the documented token format).  No code of Apple's
 ; Integer BASIC was read, disassembled or copied.
-; MIT license.  Dedicated to Uncle Bernie.
+; GPL-3.0-only license.  Dedicated to Uncle Bernie.
 ;
 ; Loads at $E000 (cold start), warm start at $E2B3, like the Apple-1 BASIC.
 ; Assembles with ca65/ld65 (flat image) or with the kit's native assembler.

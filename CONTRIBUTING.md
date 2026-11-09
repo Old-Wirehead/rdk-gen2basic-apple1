@@ -66,4 +66,4 @@ Issues, discussions et commentaires en français. Le code et la documentation an
 
 ## Licence
 
-G2 Basic est sous licence MIT. Toute contribution est acceptée sous la licence MIT.
+G2 Basic est sous **GPL-3.0-only** (voir [LICENSE](LICENSE) et [NOTICE](NOTICE)). Toute contribution est acceptée sous cette même licence. Le crédit d'Uncle Bernie pour l'ACI Gen2 et la carte GEN2 est maintenu, ainsi que la clause de non-responsabilité : ne pas la retirer d'un binaire redistribué.

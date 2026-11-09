@@ -148,4 +148,4 @@ published manuals, the documented token and memory format, and black-box observa
 
 ## License
 
-MIT, see [LICENSE](../LICENSE).
+GPL-3.0-only, see [LICENSE](../LICENSE) and [NOTICE](../NOTICE).
