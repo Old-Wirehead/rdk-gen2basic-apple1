@@ -56,6 +56,8 @@ La bannière s’affiche **seulement** au démarrage à froid, juste après la l
 | B | `RDK BASIC 1.0 - FOR UNCLE BERNIE` | 32 + 1 = **33** |
 | C | `RDK BASIC 1.0`<br>`FOR UNCLE BERNIE` | 13 + 16 + 2 = **31** |
 
+> **Décision de Wirehead, 9 novembre 2026 :** la dédicace reste dans cette note et dans le README, mais **n'est plus affichée par le BASIC** : Uncle Bernie a demandé qu'on ne lui fasse pas d'éloge, et seule la ligne « RDK G2 BASIC 1.0 » apparaît désormais au démarrage.
+
 La variante A est la plus claire. Si le budget ROM coince en fin d’étape 5, on passe à C.
 
 **Dédicace pour le manuel (FR).**

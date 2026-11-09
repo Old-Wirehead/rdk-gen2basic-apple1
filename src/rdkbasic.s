@@ -128,8 +128,7 @@ MSGS:   hs "SYNTAX"
         hs "TOO MANY PARENS"
 M_ERR:  hs " ERR"
 M_STOP: hs "STOPPED AT "
-M_BAN:  .byte "RDK G2 BASIC 1.0", CR
-        .byte "DEDICATED TO UNCLE BERNIE", CR+$80
+M_BAN:  .byte "RDK G2 BASIC 1.0", CR+$80
 
 ; statements: text, class (<$40 = special handler*2, $40-$7F = token alone, $C0+ = token + expression)
 STMTAB: hs "REM"
