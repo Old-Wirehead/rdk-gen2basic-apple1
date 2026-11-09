@@ -292,7 +292,7 @@ Chaque étape produit une image utilisable, chargée en `$E000` par la biblioth�
 
 **Nom.** **RDK BASIC** (« Retro Dev Kit BASIC ») : court, lisible dans la bannière, et sans les mots « Apple » ni « Integer BASIC », qui pourraient faire croire à une copie d’Apple. Le manuel le présente comme « un BASIC entier compatible avec l’Integer BASIC de l’Apple-1 ». Le module s’appelle **RDK BASIC GEN2**.
 
-**Licence.** **MIT**, comme le reste du projet (`license = "MIT"` dans `Cargo.toml`) : simple, et compatible avec une diffusion sur EPROM, en kit ou par Uncle Bernie avec sa carte. Une double licence MIT OR Apache-2.0 ajouterait une clause de brevets, inutile ici. On mentionne la dédicace et la règle de salle blanche dans le fichier `LICENSE`, ou dans un `NOTICE` à côté.
+**Licence.** **GPL-3.0-only**, comme le reste du projet, décision de Wirehead du 9 novembre 2026 : un seul BASIC, une seule licence, celle du kit qui l'embarque. Conséquence à assumer : qui distribue l'image sur EPROM ou en kit doit fournir le source. La dédicace à Uncle Bernie et la règle de salle blanche sont dans `NOTICE`.
 
 ## Points incertains
 
