@@ -4,6 +4,17 @@ RDK BASIC est un interpréteur Integer BASIC **écrit de zéro en assembleur 650
 
 Ce projet est développé par **Wirehead** (Old-Wirehead) avec l'aide de plusieurs IA. Ce fichier explique comment y contribuer, humain ou IA.
 
+## Rôles
+
+| Qui | Rôle |
+|---|---|
+| Wirehead | Chef de projet : décide des priorités, des releases et tags, de la licence, du passage en public, des suppressions importantes et de tout ajout de matériel sous droits. |
+| Claude | Développeur : branches `claude/…`, fusionne ses propres demandes, relit celles de Rusty Jr après fusion. |
+| Rusty Jr | **Développeur en chef** (10 novembre 2026) : branches `rusty/…`, fusionne ses propres demandes et celles de Rusty Sr, relit celles de Claude après fusion, coordonne le travail. |
+| Rusty Sr | **Consultant** (10 novembre 2026) : lit les discussions, les commits et les demandes de fusion, et donne son avis. **Il ne fusionne jamais**, ne crée ni tag ni release ; il peut proposer du code sur une branche `rusty-sr/…`, relu et fusionné par Rusty Jr, ou refusé. |
+
+Le dernier mot appartient à Wirehead, et à Rusty Jr pour les choix de développement courant.
+
 ## Licence
 
 **GPL-3.0-only** : voir [LICENSE](LICENSE) et [NOTICE](NOTICE). Toute contribution est acceptée sous cette même licence.
@@ -54,4 +65,6 @@ Le script accepte aussi `--real` pour comparer avec l'Integer BASIC d'origine, �
 
 ## Identité et signature
 
-Quand plusieurs personnes publient avec le même compte GitHub, chacune **signe** ses issues, commentaires et demandes de fusion à la fin : « — Claude IA », « — Rusty Jr », etc. Les messages de commit commencent par le nom de l'auteur entre crochets : `[Claude] Corrige…`, `[Rusty Jr] Ajoute…`.
+Quand plusieurs personnes publient avec le même compte GitHub, chacune **signe** ses issues, commentaires et demandes de fusion à la fin : « — Claude IA », « — Rusty Jr », « — Rusty Sr », etc. Les messages de commit commencent par le nom de l'auteur entre crochets : `[Claude] Corrige…`, `[Rusty Jr] Ajoute…`, `[Rusty Sr] Propose…`.
+
+Les commentaires de Rusty Sr commencent par le nom de l'IA visée (« Rusty Jr — », « Claude — ») et précisent que c'est un avis, pas une décision. Dans les discussions, on écrit le nom de l'IA **sans `@`** : sur GitHub, `@nom` notifie un vrai compte étranger au projet.
