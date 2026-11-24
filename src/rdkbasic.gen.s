@@ -387,6 +387,20 @@ TOKTXT: .byte $03
 ; not specified yet either.
 GSIG:   .byte "GEN2CARD"
 M_RET:  .byte "RETYPE LIN", $C5
+; GETIP: A = token at IP, Y = 0
+GETIP:  ldy #0
+        lda (IP),y
+        rts
+; ACC0: ACC = A (0-255)
+ACC0:   sta ACC
+        lda #0
+        sta ACC+1
+        rts
+; W10: W1 = A (0-255)
+W10:    sta W1
+        lda #0
+        sta W1+1
+        rts
         .res $E2B3-*, 0         ; warm start entry (E2B3R), as the Apple-1 BASIC
         jmp WARM
 
@@ -955,9 +969,7 @@ TPRIM:  pha
         bne @n2
         inc SI
         lda #$38
-        jsr EM
-        jsr TEXPR
-        jsr EATRP
+        jsr TXPAR
         pla
         clc
         rts
@@ -1095,9 +1107,7 @@ ASSIGN: jsr TNAME
         bne @eq
         inc SI
         lda #$42
-        jsr EM
-        jsr TEXPR
-        jsr EATRP
+        jsr TXPAR
 @eq:    eat '=', $70
         jmp TSEXPR
 @num:   jsr TSUBS
@@ -1155,9 +1165,7 @@ INVAR:  jsr TNAME
         php
         bcc @t
         lda #$42
-@t:     jsr EM
-        jsr TEXPR
-        jsr EATRP
+@t:     jsr TXPAR
 @e:     plp
         rts
 
@@ -1400,10 +1408,7 @@ PROCESS: lda #0
         sta IP+1
         jmp EXEC
 @num:   jsr DIGITS
-        lda ACC
-        sta LN
-        lda ACC+1
-        sta LN+1
+        jsr ACCLN
 @lineno: jsr PK
         cmp #CR
         bne @st
@@ -1432,10 +1437,7 @@ FINDLN: lda PP
         sta PTR
         lda PP+1
         sta PTR+1
-@l:     lda PTR
-        cmp HIMEM
-        lda PTR+1
-        sbc HIMEM+1
+@l:     jsr PTRHI
         bcs @no
         ldy #2
         lda (PTR),y
@@ -1793,10 +1795,7 @@ C_DEL:  jsr RANGE
         lda LS1+1
         sta LN+1
         jsr FINDLN
-        lda PTR                 ; end of the program ?
-        cmp HIMEM
-        lda PTR+1
-        sbc HIMEM+1
+        jsr PTRHI
         bcs @d
         ldy #2                  ; line number > LS2 ?
         lda LS2+1
@@ -1833,19 +1832,13 @@ C_RUN:  jsr ARGNUM
         sta ACC+1
 @n:     jsr ENDARG
         jsr CLR
-        lda ACC
-        sta LN
-        lda ACC+1
-        sta LN+1
+        jsr ACCLN
         jsr FINDLN
         lda ACC
         ora ACC+1
         beq @top
         bcc BADBR
-@top:   lda PTR
-        cmp HIMEM
-        lda PTR+1
-        sbc HIMEM+1
+@top:   jsr PTRHI
         bcs ENDERR
         jmp SETLINE
 BADBR:  lda #E_BRA
@@ -2199,8 +2192,7 @@ STAB:   .word S_CALL, S_DIM, S_DIM, S_TAB, S_END, S_INPUT, S_INPUT, S_INPUT
         .word S_REM, S_LET, S_GOTO, S_IF, S_PRINT, S_PRINT, S_PRINT, S_POKE
 
 EXEC:   jsr CHKKEY
-        ldy #0
-        lda (IP),y
+        jsr GETIP
         cmp #$C1
         bcs @isl18      ; via island: S_ASSIGN
         sec
@@ -2222,15 +2214,19 @@ EXEC:   jsr CHKKEY
         jmp (PTR)
 @isl18: jmp S_ASSIGN      ; branch island
 
-ENDST:  ldy #0
-        lda (IP),y
+ENDST:  jsr GETIP
         cmp #$03
         bne @e1
         jsr INCIP
         jmp EXEC
 @e1:    cmp #$01
         bne SYNJ
-        lda DIRF
+        jsr NXLINE
+        jmp EXEC                ; the kit's BASIC debugger watches this JMP
+
+; NXLINE: IP and CUR to the next program line (direct line: done; end of the
+; program: NO END)
+NXLINE: lda DIRF
         beq @p
         jmp DONE
 @p:     ldy #0
@@ -2252,7 +2248,7 @@ ENDST:  ldy #0
         lda CUR+1
         adc #0
         sta IP+1
-        jmp EXEC
+        rts
 @end:   jmp ENDERR
 
 ; stubs of statements
@@ -2321,10 +2317,7 @@ S_TAB:  jsr EVAL
 
 ; GOTO / GOSUB
 S_GOTO: jsr EVAL
-GOTO2:  lda ACC
-        sta LN
-        lda ACC+1
-        sta LN+1
+GOTO2:  jsr ACCLN
         jsr FINDLN
         bcc BADBRJ
         jmp SETLINE
@@ -2457,8 +2450,7 @@ S_PRINT: lda #0
 @s:     jsr SEVAL
         jsr PADC
         jsr PRSV
-@nx:    ldy #0
-        lda (IP),y
+@nx:    jsr GETIP
         cmp #$47
         beq @semi
         cmp #$45
@@ -2512,12 +2504,7 @@ S_FOR:  jsr LVNUM
         sta VP+1
         pla
         sta VP
-        ldy #0
-        lda ACC
-        sta (VP),y
-        iny
-        lda ACC+1
-        sta (VP),y
+        jsr STACC
         lda VP
         pha
         lda VP+1
@@ -2529,8 +2516,7 @@ S_FOR:  jsr LVNUM
         sta W2
         lda ACC+1
         sta W2+1
-        ldy #0
-        lda (IP),y
+        jsr GETIP
         cmp #$58
         bne @ds
         jsr INCIP
@@ -2549,9 +2535,7 @@ S_FOR:  jsr LVNUM
         sta W1+1
         jmp @fr
 @ds:    lda #1
-        sta W1
-        lda #0
-        sta W1+1
+        jsr W10
 @fr:    pla
         sta VP+1
         pla
@@ -2598,8 +2582,40 @@ S_FOR:  jsr LVNUM
         clc
         adc #10
         sta FORSP
+        jsr FTEST               ; start already past the limit?
+        bmi FSKIP
         jmp ENDST
 S_ERR:  jmp SYNERR
+
+; FSKIP: a FOR whose start is already past its limit does not run its body:
+; go on after the NEXT of its variable (bug 14 of the Apple-1 BASIC, where
+; FOR I=5 TO 1 runs once, corrected; The-Retro-Dev-Kit#3).  X = the entry of
+; the loop, which is dropped; NEXT statements of other variables are passed.
+FSKIP:  stx FORSP
+@st:    jsr GETIP
+        cmp #$59                ; NEXT
+        bne @sk
+@var:   jsr INCIP               ; over NEXT or ','
+        jsr LVNUM
+        ldx FORSP
+        lda VP
+        cmp FORSTK,x
+        bne @nm
+        lda VP+1
+        cmp FORSTK+1,x
+        bne @nm
+        jmp NEXTX               ; found: as a NEXT that ends its loop
+@nm:    jsr GETIP
+        cmp #$5A                ; ',': another variable
+        beq @var
+@sk:    jsr SKIP
+        jsr GETIP
+        cmp #$03                ; ':'
+        bne @eol
+        jsr INCIP
+        jmp @st
+@eol:   jsr NXLINE
+        jmp @st
 
 S_NEXT: jsr LVNUM
 NEXT1:  ldx FORSP
@@ -2632,7 +2648,35 @@ NEXT1:  ldx FORSP
         bvs @ovf
         sta (VP),y
         sta TMP+1
-        lda FORSTK+5,x
+        jsr FTEST2
+        bmi NEXTX
+        lda FORSTK+6,x
+        sta CUR
+        lda FORSTK+7,x
+        sta CUR+1
+        lda FORSTK+8,x
+        sta IP
+        lda FORSTK+9,x
+        sta IP+1
+        jmp ENDST
+@ovf:   jmp ERBIG
+NEXTX:  stx FORSP
+        jsr GETIP
+        cmp #$5A
+        bne @en
+        jsr INCIP
+        jmp S_NEXT
+@en:    jmp ENDST
+
+; FTEST: N=1 when the loop of the FOR entry X is over, the variable at VP
+; holding its value (FTEST2: the value already in TMP)
+FTEST:  ldy #0
+        lda (VP),y
+        sta TMP
+        iny
+        lda (VP),y
+        sta TMP+1
+FTEST2: lda FORSTK+5,x
         bmi @neg
         lda FORSTK+2,x
         cmp TMP
@@ -2645,33 +2689,14 @@ NEXT1:  ldx FORSP
         sbc FORSTK+3,x
 @cmp:   bvc @v
         eor #$80
-@v:     bmi @exit
-        lda FORSTK+6,x
-        sta CUR
-        lda FORSTK+7,x
-        sta CUR+1
-        lda FORSTK+8,x
-        sta IP
-        lda FORSTK+9,x
-        sta IP+1
-        jmp ENDST
-@ovf:   jmp ERBIG
-@exit:  stx FORSP
-        ldy #0
-        lda (IP),y
-        cmp #$5A
-        bne @en
-        jsr INCIP
-        jmp S_NEXT
-@en:    jmp ENDST
+@v:     rts
 
 ; ------------------------------------------------------------ expressions
 ; EVAL: ACC = value of the expression at IP
 EVAL:   lda #1
 EXPR:   pha
         jsr OPND
-@loop:  ldy #0
-        lda (IP),y
+@loop:  jsr GETIP
         cmp #$12
         bcc @done
         cmp #$21
@@ -2712,8 +2737,7 @@ OPND:   tsx
         lda #E_PAR
         jmp ERROR
 @isl22: jmp @var      ; branch island
-@ok:    ldy #0
-        lda (IP),y
+@ok:    jsr GETIP
         cmp #$C1
         bcs @isl22      ; via island: @var
         cmp #$B0
@@ -2756,19 +2780,13 @@ OPND:   tsx
         lda #0
         beq @sv
 @one:   lda #1
-@sv:    sta ACC
-        lda #0
-        sta ACC+1
-        rts
+@sv:    jmp ACC0
 @t3:    cmp #$3B
         bne @t4
         jsr SEVAL
         jsr RPAR
         lda SLN
-        sta ACC
-        lda #0
-        sta ACC+1
-        rts
+        jmp ACC0
 @t4:    cmp #$2E
         bcc @syn
         cmp #$33
@@ -2792,8 +2810,7 @@ OPND:   tsx
 @slit:  jsr SEVAL
         jmp SCMP
 @var:   jsr NAMEPARSE
-        ldy #0
-        lda (IP),y
+        jsr GETIP
         cmp #$40
         beq @sv2
         jsr LVNUM2
@@ -2848,10 +2865,7 @@ F_KEY:  lda ACC
         and #$7F
         cmp #3
         beq @brk
-@s:     sta ACC
-        lda #0
-        sta ACC+1
-        rts
+@s:     jmp ACC0
 @brk:   jmp STOPKEY
 F_ABS:  lda ACC+1
         bpl @r
@@ -2882,10 +2896,7 @@ F_RND:  lda ACC
         and #$7F
         sta TMP+1
         jsr UDIV
-        lda W1
-        sta ACC
-        lda W1+1
-        sta ACC+1
+        jsr W1ACC
         pla
         bpl @r
         jmp NEG
@@ -3006,10 +3017,7 @@ APPLY:  cmp #$16
 @k:     and T1
         beq @z
         lda #1
-@z:     sta ACC
-        lda #0
-        sta ACC+1
-        rts
+@z:     jmp ACC0
 @l:     cmp #$1F
         bcs @m
         ; AND / OR on truth values
@@ -3028,10 +3036,7 @@ APPLY:  cmp #$16
         and T1
         jmp @sv
 @or:    ora T1
-@sv:    sta ACC
-        lda #0
-        sta ACC+1
-        rts
+@sv:    jmp ACC0
 @m:     cmp #$20
         bne @mod
         jmp POW
@@ -3078,10 +3083,7 @@ MODOP:  lda ACC
         beq OVFJ
         jsr SIGNS
         jsr UDIV
-        lda W1
-        sta ACC
-        lda W1+1
-        sta ACC+1
+        jsr W1ACC
         jmp FIXSG
 
 ; UMUL: ACC = TMP * ACC (unsigned, overflow above 32767)
@@ -3110,10 +3112,7 @@ UMUL:   lda #0
         bcs OVFJ
         bmi OVFJ
         jmp @l
-@d:     lda W1
-        sta ACC
-        lda W1+1
-        sta ACC+1
+@d:     jsr W1ACC
         rts
 
 ; POW: integer power (the original crashes here): TMP ^ ACC
@@ -3128,9 +3127,7 @@ POW:    lda ACC+1
         lda ACC+1
         sta T2                  ; exponent
         lda #1
-        sta ACC
-        lda #0
-        sta ACC+1
+        jsr ACC0
 @l:     lda T1
         ora T2
         beq @r
@@ -3160,8 +3157,7 @@ POW:    lda ACC+1
 ; the data (array: 2 bytes per element; string: length byte, then characters).
 
 ; NAMEPARSE: IP on the letter token -> NK1, NK2; IP after the name
-NAMEPARSE: ldy #0
-        lda (IP),y
+NAMEPARSE: jsr GETIP
         sta NK1
         jsr INCIP
         lda (IP),y
@@ -3283,17 +3279,14 @@ CREATE: sta T3
 
 ; LVNUM: IP on a numeric variable -> VP = address of its value
 LVNUM:  jsr NAMEPARSE
-LVNUM2: ldy #0
-        lda (IP),y
+LVNUM2: jsr GETIP
         cmp #$2D
         beq @arr
         ldx #0
         jsr LOOKUP
         bcs @f
         lda #5
-        sta W1
-        lda #0
-        sta W1+1
+        jsr W10
         jsr CREATE
 @f:     clc
         lda VP
@@ -3323,9 +3316,7 @@ LVNUM2: ldy #0
         jsr LOOKUP
         bcs @g
         lda #7                  ; an undimensioned array has 1 element (like the Apple-1 BASIC)
-        sta W1
-        lda #0
-        sta W1+1
+        jsr W10
         lda #1
         jsr CREATE
 @g:     lda ACC+1
@@ -3374,16 +3365,13 @@ STRVAR: ldx #2
         jsr LOOKUP
         bcs @r
         lda #7                  ; an undimensioned string holds 1 character (like the Apple-1 BASIC)
-        sta W1
-        lda #0
-        sta W1+1
+        jsr W10
         lda #2
         jsr CREATE
 @r:     rts
 
 ; SEVAL: string expression at IP -> SPT, SLN
-SEVAL:  ldy #0
-        lda (IP),y
+SEVAL:  jsr GETIP
         cmp #$28
         bne @v
         jsr INCIP
@@ -3408,8 +3396,7 @@ SEVAL:  ldy #0
 @v:     cmp #$C1
         bcc @syn
         jsr NAMEPARSE
-        ldy #0
-        lda (IP),y
+        jsr GETIP
         cmp #$40
         bne @syn
         jsr INCIP
@@ -3422,8 +3409,7 @@ SEVAL3: jsr STRVAR
         pha
         lda VP+1
         pha
-        ldy #0
-        lda (IP),y
+        jsr GETIP
         cmp #$2A
         beq @sub
         lda #$FF                ; the whole string: an empty one is fine
@@ -3448,8 +3434,7 @@ SEVAL3: jsr STRVAR
         sta ACC
         lda #$80
         sta ACC+1
-        ldy #0
-        lda (IP),y
+        jsr GETIP
         cmp #$23
         bne @noe
         jsr INCIP
@@ -3482,9 +3467,7 @@ SEVAL3: jsr STRVAR
         cmp #$80
         bne @e1
         lda T1
-        sta ACC
-        lda #0
-        sta ACC+1
+        jsr ACC0
 @e1:    lda ACC+1
         bne @isl27      ; via island: @str
         lda ACC
@@ -3530,8 +3513,7 @@ SCMP:   lda SPT
         pha
         lda SLN
         pha
-        ldy #0
-        lda (IP),y
+        jsr GETIP
         jsr INCIP
         cmp #$39
         beq @e
@@ -3575,8 +3557,7 @@ SCMP:   lda SPT
 
 ; ------------------------------------------------------------ assignments, DIM, INPUT
 S_ASSIGN: jsr NAMEPARSE
-        ldy #0
-        lda (IP),y
+        jsr GETIP
         cmp #$40
         beq @str
         jsr LVNUM2
@@ -3591,12 +3572,7 @@ S_ASSIGN: jsr NAMEPARSE
         sta VP+1
         pla
         sta VP
-        ldy #0
-        lda ACC
-        sta (VP),y
-        iny
-        lda ACC+1
-        sta (VP),y
+        jsr STACC
         jmp ENDST
 @str:   inc16 IP
         jsr STRVAR
@@ -3604,8 +3580,7 @@ S_ASSIGN: jsr NAMEPARSE
         pha
         lda VP+1
         pha
-        ldy #0
-        lda (IP),y
+        jsr GETIP
         cmp #$42
         bne @ns
         jsr INCIP
@@ -3694,8 +3669,7 @@ S_DIM:  lda TOK
         beq @i
 @s:     lda #1
 @i:     jsr DIMIT
-@nx:    ldy #0
-        lda (IP),y
+@nx:    jsr GETIP
         cmp #$43
         beq @s2
         cmp #$44
@@ -3753,7 +3727,6 @@ DIMIT:  pha
 @isl31: jmp @bstr      ; branch island
 @isl32: jmp @rd2      ; branch island
 @isl33: jmp @rng      ; branch island
-@isl34: jmp @rd1      ; branch island
 @n2:    lda ACC+1
         bmi @isl33      ; via island: @rng
         lda ACC
@@ -3761,7 +3734,7 @@ DIMIT:  pha
         beq @isl33      ; via island: @rng
         ldx #1
         jsr LOOKUP
-        bcs @isl34      ; via island: @rd1
+        bcs @rd1
         asl ACC
         rol ACC+1
         clc
@@ -3771,18 +3744,16 @@ DIMIT:  pha
         lda ACC+1
         adc #0
         sta W1+1
-        bcs @isl35      ; via island: @mem
+        bcs @isl34      ; via island: @mem
         lda #1
         jmp CREATE
-@isl35: jmp @mem      ; branch island
-@isl36: jmp REDIM      ; branch island
+@isl34: jmp @mem      ; branch island
+@isl35: jmp REDIM      ; branch island
 @rd2:   lda ACC                 ; DIM of an existing string: fine when it is not larger
         clc
         adc #6
-        sta W1
-        lda #0
-        sta W1+1
-        beq @isl36      ; via island: REDIM
+        jsr W10
+        beq @isl35      ; via island: REDIM
 @rd1:   asl ACC                 ; DIM of an existing array
         rol ACC+1
         lda ACC
@@ -3817,19 +3788,17 @@ S_INPUT: lda #1
         sta NOQ
         lda TOK
         cmp #$53
-        bne @isl37      ; via island: INVAR2
+        bne @isl36      ; via island: INVAR2
         jsr INCIP
-@p:     ldy #0
-        lda (IP),y
+@p:     jsr GETIP
         jsr INCIP
         cmp #$29
         beq @pd
         and #$7F
         jsr PUTC
         jmp @p
-@isl37: jmp INVAR2      ; branch island
-@pd:    ldy #0
-        lda (IP),y
+@isl36: jmp INVAR2      ; branch island
+@pd:    jsr GETIP
         sta TOK
         jsr INCIP
         lda #1
@@ -3857,21 +3826,15 @@ INVAR2: lda IP
         sta INPF
         lda TOK
         cmp #$52
-        beq @isl38      ; via island: @sv
+        beq @sv
         cmp #$26
         beq @sv
         jsr INNUM
         lda #0
         sta INPF
         jsr LVNUM
-        ldy #0
-        lda ACC
-        sta (VP),y
-        iny
-        lda ACC+1
-        sta (VP),y
+        jsr STACC
         jmp @after
-@isl38: jmp @sv      ; branch island
 @sv:    jsr NAMEPARSE
         lda #$40
         jsr EXPECT
@@ -3923,8 +3886,7 @@ INVAR2: lda IP
         sta IDX
         lda #0
         sta INPF
-@after: ldy #0
-        lda (IP),y
+@after: jsr GETIP
         cmp #$26
         beq @nx
         cmp #$27
@@ -3950,16 +3912,16 @@ INNUM:  lda IDX
         pha
         jsr PK
         cmp #'0'
-        bcc @isl39      ; via island: @syn
+        bcc @isl37      ; via island: @syn
         cmp #'9'+1
-        bcs @isl39      ; via island: @syn
+        bcs @isl37      ; via island: @syn
         jsr DIGITS
         jsr PK
         cmp #','
         bne @c
         inc SI
         jmp @ok
-@isl39: jmp @syn      ; branch island
+@isl37: jmp @syn      ; branch island
 @c:     cmp #CR
         bne @syn
 @ok:    lda SI
@@ -3984,3 +3946,38 @@ INPERR: jsr ERRMSG
         sta NEWL
         jmp INVAR2
 
+; STACC: variable at VP = ACC
+STACC:  ldy #0
+        lda ACC
+        sta (VP),y
+        iny
+        lda ACC+1
+        sta (VP),y
+        rts
+
+; TXPAR: shared sequence (room for bug 14)
+TXPAR:  jsr EM
+        jsr TEXPR
+        jsr EATRP
+        rts
+
+; W1ACC: ACC = W1
+W1ACC:  lda W1
+        sta ACC
+        lda W1+1
+        sta ACC+1
+        rts
+
+; PTRHI: C = 1 when PTR >= HIMEM
+PTRHI:  lda PTR
+        cmp HIMEM
+        lda PTR+1
+        sbc HIMEM+1
+        rts
+
+; ACCLN: LN = ACC
+ACCLN:  lda ACC
+        sta LN
+        lda ACC+1
+        sta LN+1
+        rts
