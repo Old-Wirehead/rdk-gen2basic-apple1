@@ -3,7 +3,7 @@
 A clean-room, Integer BASIC-compatible interpreter for the Apple 1, written from scratch in 6502 assembly.
 
 - **Compatible:** same syntax, same tokens and same tape format as the original Apple 1 Integer BASIC, so existing programs and tapes keep working.
-- **Fixed:** the known bugs of the original are corrected.
+- **Fixed:** most known bugs of the original are corrected (`^`, `FOR I=5 TO 1`, `:` in immediate mode…); `IF … THEN a:b`, which programs count on, is kept (see the manual).
 - **Extended:** starts the GEN2 color graphics card driver when it finds one (graphics statements come in version 2).
 
 RDK BASIC is part of the **Retro Dev Kit** family, alongside [Retro Dev Kit Apple 1](https://github.com/Old-Wirehead/rdk-apple1).
@@ -12,7 +12,7 @@ RDK BASIC is part of the **Retro Dev Kit** family, alongside [Retro Dev Kit Appl
 
 ## Status
 
-Version 1.0 (RDK 7.9.2 build): complete interpreter, 7,933 bytes at `$E000`, **all test sessions identical to the original's output** (3 more cover the extensions `KEY`, `LOMEM=` and `HIMEM=`).
+Version 1.0 (RDK 7.9.2 build): complete interpreter, 7,912 bytes at `$E000`, **all test sessions identical to the original's output** (4 more cover the extensions `KEY`, `LOMEM=` and `HIMEM=`, and the corrected `FOR`).
 Extensions: `KEY(n)` (read the keyboard without waiting), `LOMEM=` and `HIMEM=`.
 No graphics statements yet. See the [manual](docs/manual.md) (in English), the design note
 (in French): [docs/conception/basic-rdk.md](docs/conception/basic-rdk.md).
@@ -30,7 +30,7 @@ RDK BASIC contains no code from Apple's Integer BASIC and no code from POM-1. It
 
 ## En bref (français)
 
-RDK BASIC est un clone libre, écrit de zéro, de l'Integer BASIC de l'Apple 1 : même syntaxe, mêmes jetons, même format cassette, bugs corrigés, et extensions graphiques couleur GEN2. Projet en phase de conception, la note de conception est dans `docs/conception/`.
+RDK BASIC est un clone libre, écrit de zéro, de l'Integer BASIC de l'Apple 1 : même syntaxe, mêmes jetons, même format cassette, la plupart des bugs corrigés (pas `IF … THEN a:b`, dont les programmes dépendent), et extensions graphiques couleur GEN2. Projet en phase de conception, la note de conception est dans `docs/conception/`.
 
 ## License
 

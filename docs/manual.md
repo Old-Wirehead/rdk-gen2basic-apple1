@@ -11,7 +11,7 @@ driver (see [GEN2 card hook](#gen2-card-hook)); graphics commands are planned fo
 
 ## Loading
 
-The image is `bin/rdk-g2basic.bin`, 7,933 bytes, to be loaded at `$E000`.
+The image is `bin/rdk-g2basic.bin`, 7,912 bytes, to be loaded at `$E000`.
 
 * In **Retro Dev Kit Apple 1** it is the BASIC selected in the *Machine* settings (the user's own
   original Integer BASIC stays available as the other choice, when the file is present).
@@ -100,11 +100,17 @@ Bugs fixed or behaviours extended (the programs that worked on the original are 
 * The memory size is probed (the original assumes 4 KB), so large programs run on 8 KB or more without `HIMEM`.
 * `KEY(n)` reads the keyboard without waiting (new function, see above).
 * `SGN` of a number of 256 or more returns 1 (the first builds returned a wrong value for such numbers).
+* A `FOR` whose start is already past its limit (`FOR I=5 TO 1`, or `FOR I=1 TO 5 STEP -1`) does not run its
+  body: execution goes on after the `NEXT` of its variable, and the variable keeps its start value. The original
+  runs the body once. A program that counts on that single pass behaves differently.
 * Slices: `A$(i)` with `i` of 256 or more, or negative, gives `>255 ERR` and `A$(i,j)` with `j` lower than `i-1`
   gives `STRING ERR`, as on the original.
 
 Known differences kept as they are:
 
+* `IF ... THEN a:b` runs `b` even when the condition is false, as on the original: only the first statement
+  after `THEN` depends on the condition. Programs written for the original count on it
+  (`FOR J=1 TO 8:IF ... THEN R=J:NEXT J`), so it is kept.
 * `RND` is a different generator: sequences differ from the original's (the range of the results is the same).
 * A larger `DIM` of an existing array gives `DIM ERR`.
 * The interpreter keeps its working variables in zero page `$00-$3F`, so `POKE`/`PEEK` there are not harmless.

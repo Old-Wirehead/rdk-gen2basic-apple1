@@ -1,6 +1,6 @@
 # Contribuer à RDK G2 Basic
 
-RDK BASIC est un interpréteur Integer BASIC **écrit de zéro en assembleur 6502** pour l'Apple-1 : même syntaxe, mêmes jetons, même format de cassette que l'original, avec ses bogues connus corrigés, et des extensions pour la carte couleur GEN2 d'Uncle Bernie. Il est intégré au [Retro Dev Kit Apple 1](https://github.com/Old-Wirehead/rdk-apple1) sous forme d'une image de 7 933 octets chargée en `$E000`.
+RDK BASIC est un interpréteur Integer BASIC **écrit de zéro en assembleur 6502** pour l'Apple-1 : même syntaxe, mêmes jetons, même format de cassette que l'original, avec la plupart de ses bogues connus corrigés, et des extensions pour la carte couleur GEN2 d'Uncle Bernie. Il est intégré au [Retro Dev Kit Apple 1](https://github.com/Old-Wirehead/rdk-apple1) sous forme d'une image de 7 912 octets chargée en `$E000`.
 
 Ce projet est développé par **Wirehead** (Old-Wirehead) avec l'aide de plusieurs IA. Ce fichier explique comment y contribuer, humain ou IA.
 
