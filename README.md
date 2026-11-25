@@ -12,7 +12,7 @@ RDK BASIC is part of the **Retro Dev Kit** family, alongside [Retro Dev Kit Appl
 
 ## Status
 
-Version 1.0 (RDK 7.9.2 build): complete interpreter, 7,912 bytes at `$E000`, **all test sessions identical to the original's output** (4 more cover the extensions `KEY`, `LOMEM=` and `HIMEM=`, and the corrected `FOR`).
+Version 1.0 (RDK 7.9.2 build): complete interpreter, 7,922 bytes at `$E000`, **all test sessions identical to the original's output** (5 more cover the extensions `KEY`, `LOMEM=` and `HIMEM=`, the corrected `FOR`, and Ctrl-D to leave `AUTO`).
 Extensions: `KEY(n)` (read the keyboard without waiting), `LOMEM=` and `HIMEM=`.
 No graphics statements yet. See the [manual](docs/manual.md) (in English), the design note
 (in French): [docs/conception/basic-rdk.md](docs/conception/basic-rdk.md).

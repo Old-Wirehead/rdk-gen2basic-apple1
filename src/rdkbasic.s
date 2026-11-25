@@ -626,8 +626,13 @@ GETLX:  stx T3                  ; X = characters already in the buffer
         cmp #'_'
         beq @bs
         cmp #' '
-        bcc @k
-        ldx T3
+        bcs @c
+        cmp #$04                ; Ctrl-D: AUTO off (then RETURN gives the > prompt)
+        bne @k
+        lda #0
+        sta AUTON
+        beq @k
+@c:     ldx T3
         sta IBUF,x
         inc T3
         jsr PUTC

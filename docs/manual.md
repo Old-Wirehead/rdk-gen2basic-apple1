@@ -11,7 +11,7 @@ driver (see [GEN2 card hook](#gen2-card-hook)); graphics commands are planned fo
 
 ## Loading
 
-The image is `bin/rdk-g2basic.bin`, 7,912 bytes, to be loaded at `$E000`.
+The image is `bin/rdk-g2basic.bin`, 7,922 bytes, to be loaded at `$E000`.
 
 * In **Retro Dev Kit Apple 1** it is the BASIC selected in the *Machine* settings (the user's own
   original Integer BASIC stays available as the other choice, when the file is present).
@@ -36,6 +36,9 @@ DEDICATED TO UNCLE BERNIE
 
 Commands (immediate mode): `LIST`, `LIST n`, `LIST a,b`, `RUN`, `CLR`, `SCR` (erase the program, this is the
 original's NEW), `DEL a,b`, `AUTO n`, `MAN`, `LOMEM=n`, `HIMEM=n`.
+
+`AUTO n[,step]` numbers the lines typed from `n` (step 10 by default). To leave it, type `MAN` as a line, or
+press Ctrl-D then RETURN.
 
 Statements: `REM`, `LET` (or implicit), `DIM`, `TAB`, `END`, `INPUT`, `FOR`/`TO`/`STEP`/`NEXT`, `RETURN`,
 `GOSUB`, `GOTO`, `IF`/`THEN`, `PRINT`, `POKE`, `CALL`. Several statements on a line with `:`.

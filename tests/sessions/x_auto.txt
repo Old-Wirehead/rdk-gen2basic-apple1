@@ -1,0 +1,5 @@
+AUTO 100
+PRINT 1
+#KEY:
+
+LIST
